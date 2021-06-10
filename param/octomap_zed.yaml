@@ -1,0 +1,46 @@
+resolution: 0.2
+frame_id: map
+sensor_model/max_range: 7
+sensor_model/max: 0.9
+sensor_model/min: 0.12
+sensor_model/hit: 0.7
+sensor_model/miss: 0.1 # should be lower to clear bleeding from tree to ground
+max_distance: 1.0
+slice_height: 2.0 # used only global_edf visualization
+unknown_is_occupied: false
+verbose: false
+publish_global_edf: false,
+publish_local_edf: true
+init_bound: {
+              max:{
+                    x: 100,
+                    y: 100,
+                    z: 10
+              },
+              min:{
+                    x: -100,
+                    y: -100,
+                    z: -10
+              }
+}
+# local edf visualization
+window_bound: {
+              max: {
+                     x: 10,
+                     y: 10,
+                     z: 1
+              },
+              min: {
+                     x: -10,
+                     y: -10,
+                     z: -3
+              }
+}
+safe_margin: 0.3
+height_map: false
+color: {
+         r: 0.9,
+         g: 0.9,
+         b: 0.9,
+         a: 1.0
+}

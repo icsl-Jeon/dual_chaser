@@ -1,0 +1,19 @@
+<launch>
+
+    <include file="$(find zed2_client)/launch/client.launch">
+        <arg name="is_bag" value="true"/>
+        <arg name="bag_file" value="/media/jbs/ssd/bag_zed/outdoor/dual_target/compressed/forest_budlegool.bag"/>
+        <arg name="run_edt" value="false"/>
+        <arg name="rviz" value="false"/>
+        <arg name="point_topic" value="/cloud_in"/>
+    </include>
+
+    <include file="$(find dual_chaser)/launch/preplanner.launch">
+        <arg name="is_bag" value="true"/>
+        <arg name="point_topic" value="/cloud_in"/>
+    </include>
+
+    <node pkg="rviz" type="rviz" name="rviz_zed_prediction"
+          args="-d $(find dual_chaser)/rviz/dual_chaser.rviz" output="log"/>
+
+</launch>

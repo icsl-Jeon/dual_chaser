@@ -9,6 +9,7 @@
 
 * what if the prediction of one of the targets were not updated due to lack of observation?
 * EDF bound is not our stake (it is determined by edtServer)
+* What if graph is not connected? 
 
 # Smooth planner
 

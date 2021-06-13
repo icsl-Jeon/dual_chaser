@@ -35,7 +35,8 @@ namespace dual_chaser {
         vector<EllipsoidNoRot> extraObstacles;
 
         ScoreFieldParam(){};
-        ScoreFieldParam(double resolution,const vector<Point>& targets,double margin_xy,double margin_z,
+        ScoreFieldParam(double resolution,const vector<Point>& targets,double margin_xy,
+                        double margin_z_up, double margin_z_down,
                         double minZ,double maxZ,bool & isValidFeild){
             float xmin = numeric_limits<float>::max();
             float ymin = numeric_limits<float>::max();
@@ -57,10 +58,10 @@ namespace dual_chaser {
 
             fieldParam.origin.x = xmin - margin_xy;
             fieldParam.origin.y = ymin - margin_xy;
-            fieldParam.origin.z = max(zmin - margin_z,minZ);
+            fieldParam.origin.z = max(zmin - margin_z_down,minZ);
             fieldParam.lx = xmax - xmin + 2*margin_xy;
             fieldParam.ly = ymax - ymin + 2*margin_xy;
-            fieldParam.lz = min(zmax + margin_z -fieldParam.origin.z,maxZ - fieldParam.origin.z );
+            fieldParam.lz = min(zmax + margin_z_up -fieldParam.origin.z,maxZ - fieldParam.origin.z );
 
             if (fieldParam.lx <= 0 or fieldParam.ly <= 0 or fieldParam.lz <= 0 ){
                 isValidFeild = false;

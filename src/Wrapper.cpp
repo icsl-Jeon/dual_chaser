@@ -20,6 +20,8 @@ namespace dual_chaser{
         param.mode = isPreplanMode  ? PLANNING_LEVEL::PRE_PLANNING :  PLANNING_LEVEL::SMOOTH_PLANNING;
 
         nhPrivate.param("horizon",param.horizon,1.0f);
+        nhPrivate.param("desired_position_smoothing",param.planPoseSmoothing,0.8f);
+        nhPrivate.param("history_collect_interval",param.historyCollectInterval,0.1f);
         state.horizon = param.horizon;
         nhPrivate.param<string>("frame_id",param.worldFrameId,"/map");
         nhPrivate.param("smooth_planner/preplan_track_rad",param.knotEps,float(0.3));
@@ -40,12 +42,31 @@ namespace dual_chaser{
         nhPrivate.param("preplanner/target_collision_ellipse/y", param.TC_ellipsoidScaleCollision(1), double(0.4));
         nhPrivate.param("preplanner/target_collision_ellipse/z", param.TC_ellipsoidScaleCollision(2), double(0.8));
 
+        // Bearing arrow history initialization
+
+        nhPrivate.param("visualization/bearing_dt",param.bearingCollectInterval,0.2f);
+        nhPrivate.param("visualization/history_bearing_arrow/target1/r",visSet.bearingHistoryArrowBase[0].color.r,float(0.7));
+        nhPrivate.param("visualization/history_bearing_arrow/target1/g",visSet.bearingHistoryArrowBase[0].color.g,float(0.3));
+        nhPrivate.param("visualization/history_bearing_arrow/target1/b",visSet.bearingHistoryArrowBase[0].color.b,float(0.3));
+        nhPrivate.param("visualization/history_bearing_arrow/a",visSet.bearingHistoryArrowBase[0].color.a,float(0.7));
+        nhPrivate.param("visualization/history_bearing_arrow/w",visSet.bearingHistoryArrowBase[0].scale.x,0.05);
+        nhPrivate.param("visualization/history_bearing_arrow/target2/r",visSet.bearingHistoryArrowBase[1].color.r,float(0.3));
+        nhPrivate.param("visualization/history_bearing_arrow/target2/g",visSet.bearingHistoryArrowBase[1].color.g,float(0.3));
+        nhPrivate.param("visualization/history_bearing_arrow/target2/b",visSet.bearingHistoryArrowBase[1].color.b,float(0.7));
+        nhPrivate.param("visualization/history_bearing_arrow/a",visSet.bearingHistoryArrowBase[1].color.a,float(0.7));
+        nhPrivate.param("visualization/history_bearing_arrow/w",visSet.bearingHistoryArrowBase[1].scale.x,0.05);
+
         // advertise
         string topicPrefix = "wrapper";
         pubSet.chaserTwist = nhPrivate.advertise<geometry_msgs::TwistStamped>(topicPrefix + "/velocity",1);
         pubSet.corridor= nhPrivate.advertise<visualization_msgs::MarkerArray>(topicPrefix + "/corridor",1);
         pubSet.curPlan = nhPrivate.advertise<nav_msgs::Path>(topicPrefix+"/cur_plan_traj",1);
         pubSet.curPlanHistory= nhPrivate.advertise<nav_msgs::Path>(topicPrefix+"/history_plan",1);
+        for(int m =0 ; m < param.nTarget ; m++){
+            string topicPrefixTarget = topicPrefix + "/target_" + to_string(m) ;
+            pubSet.bearingHistory[m] = nhPrivate.advertise<visualization_msgs::MarkerArray>(topicPrefixTarget + "/bearing",1);
+            pubSet.targetHistory[m] = nhPrivate.advertise<nav_msgs::Path>(topicPrefixTarget + "/history",1);
+        }
 
         callbackQueue.clear();
         nhTimer.setCallbackQueue(&callbackQueue);
@@ -63,6 +84,17 @@ namespace dual_chaser{
         visSet.eraser = visSet.corridorMarkerBase;
         visSet.eraser.type = visualization_msgs::Marker::DELETE;
         visSet.curPlanHistory.header.frame_id = param.worldFrameId;
+
+
+        for(int m = 0; m < param.nTarget ; m++){
+            visSet.bearingHistoryArrowBase[m].scale.y = 0.1;
+            visSet.bearingHistoryArrowBase[m].scale.z = 0.1;
+            visSet.bearingHistoryArrowBase[m].type = visualization_msgs::Marker::ARROW;
+            visSet.bearingHistoryArrowBase[m].header.frame_id = param.worldFrameId;
+            visSet.bearingHistoryArrowBase[m].pose.orientation.w = 1.0;
+        }
+
+
     }
 
     void Wrapper::prepare(preplanner::PlanningInput &planningInput) {
@@ -181,8 +213,10 @@ namespace dual_chaser{
         vector<Pin3f*> pinPtrs;
         for (int n = 0; n < corridors.size(); n++)
             pinPtrs.push_back(&corridors[n]);
-        Pin3f* initialCondition = new FixPin3f(t0,0,planningInput.initStateForPlanning.position.toEigen());
-        pinPtrs.push_back(initialCondition);
+        Pin3f* initialConditionLocation = new FixPin3f(t0,0,planningInput.initStateForPlanning.position.toEigen());
+        Pin3f* initialConditionVelocity = new FixPin3f(t0,1,planningInput.initStateForPlanning.velocity.toEigen());
+        pinPtrs.push_back(initialConditionLocation);
+        pinPtrs.push_back(initialConditionVelocity);
         TrajGenParam pp(param.polyOrder,2,trajgen::ALGORITHM::POLY_COEFF);
         TrajGen* trajGen = new TrajGen (timeKnots,pp);
         trajGen->setDerivativeObj(param.objWeights.cast<float>());
@@ -297,6 +331,37 @@ namespace dual_chaser{
         returnState.yaw = yaw;
         return returnState;
     }
+    /**
+     * Smoothing version
+     * @param targets
+     * @param smoothFrom
+     * @param smoothing
+     * @param seeFromDroneState
+     * @return
+     */
+    ChaserState Wrapper::State::getPlanChaserState(PointSet targets, ChaserState smoothFrom, float smoothing,
+                                                   bool seeFromDroneState) const {
+
+        ChaserState returnState = getPlanChaserState();
+        returnState.position.x = (1-smoothing) * returnState.position.x + smoothing * smoothFrom.position.x;
+        returnState.position.y = (1-smoothing) * returnState.position.y + smoothing * smoothFrom.position.y;
+        returnState.position.z = (1-smoothing) * returnState.position.z + smoothing * smoothFrom.position.z;
+        returnState.velocity.x = (1-smoothing) * returnState.velocity.x + smoothing * smoothFrom.velocity.x;
+        returnState.velocity.y = (1-smoothing) * returnState.velocity.y + smoothing * smoothFrom.velocity.y;
+        returnState.velocity.z = (1-smoothing) * returnState.velocity.z + smoothing * smoothFrom.velocity.z;
+
+        Point seeFrom;
+        if(seeFromDroneState){
+            seeFrom = getChaserState().position;
+        }else
+            seeFrom = returnState.position;
+
+        Point targetCenter = targets.center();
+        float yaw = atan2(targetCenter.y - seeFrom.y , targetCenter.x - seeFrom.x);
+        returnState.yaw = yaw;
+        return returnState;
+    }
+
 
     nav_msgs::Path Wrapper::State::getPlanTraj(string worldFrameId,int nPnt = 20) const {
         nav_msgs::Path path;
@@ -321,6 +386,7 @@ namespace dual_chaser{
          *  1. prediction
          */
         if (targetManagerPtr->predict(state.predictionOutput)){
+            ROS_INFO("prediction success. will plan..");
 
             /**
              * 2. Preplan: in = prediction, chaser stsate / out = corridor, waypoints
@@ -384,17 +450,27 @@ namespace dual_chaser{
         }
     }
 
-    Pose Wrapper::evalCurrentPlanningPose() {
+    Pose Wrapper::emitCurrentPlanningPose() {
 
         // eval current desired planning
         PointSet targetLocations;
         vector<Pose> targetInitPose = targetManagerPtr->lookupLastTargets();
         for (int n = 0; n < param.nTarget ; n++)
             targetLocations.points.push_back(targetInitPose[n].getTranslation());
-        ChaserState curPlanState = state.getPlanChaserState(targetLocations,false);
+
+        ChaserState curPlanState;
+        if (not state.isPlanPoseEmitted)
+            curPlanState = state.getPlanChaserState(targetLocations,false);
+        else
+            curPlanState = state.getPlanChaserState(targetLocations,
+                                                    state.lastEmitPlanPose,param.planPoseSmoothing,
+                                                    false);
+
+        state.lastEmitPlanPose = curPlanState;
         geometry_msgs::PoseStamped poseStamped;
         poseStamped.pose = curPlanState.toGeoPose();
         Pose evalPose (poseStamped);
+        state.isPlanPoseEmitted = true;
         return evalPose;
     }
 
@@ -425,7 +501,7 @@ namespace dual_chaser{
             ROS_ERROR_STREAM(ex.what());
         }
 
-        // 2. publish the lsat "updated" state
+        // 2. visualize update & publish the lsat "updated" state
         if (state.isChaserPose){
             pubSet.chaserTwist.publish(state.getVelocityMarker(param.chaserFrameId));
         }
@@ -436,7 +512,8 @@ namespace dual_chaser{
         if (state.isPlan){
             visSet.curPlan.header.stamp = curTime;
             pubSet.curPlan.publish(visSet.curPlan); // planning trajectory
-            Pose curPlanPose = evalCurrentPlanningPose(); // output planning pose from current state
+            Pose curPlanPose = emitCurrentPlanningPose(); // output planning pose from current state
+            vector<Pose> curTargetPoint = targetManagerPtr->lookupLastTargets();
 
             // broadcast desired tf
             auto desiredTf = curPlanPose.toTf(param.worldFrameId,param.chaserPlanningFrameId,curTime);
@@ -444,14 +521,45 @@ namespace dual_chaser{
 
             // collect current planning
             if ((curTime - state.tLastPlanningCollect).toSec() > param.historyCollectInterval){
+
+                // chaser
                 visSet.curPlanHistory.header.stamp = curTime;
                 geometry_msgs::PoseStamped poseStamped;
                 poseStamped.pose = curPlanPose.toGeoPose();
                 poseStamped.header.frame_id = param.worldFrameId;
                 poseStamped.header.stamp = curTime;
                 visSet.curPlanHistory.poses.push_back(poseStamped);
+
+                // target
+                for (int m = 0; m < param.nTarget ; m++){
+                    visSet.targetHistory[m].header.stamp = curTime;
+                    visSet.targetHistory[m].header.frame_id = param.worldFrameId;
+                    poseStamped.pose = curTargetPoint[m].toGeoPose();
+                    visSet.targetHistory[m].poses.push_back(poseStamped);
+                }
+                state.tLastPlanningCollect = curTime;
             }
+
+
+            if ((curTime - state.tLastBearingCollect).toSec() > param.bearingCollectInterval) {
+                for (int m = 0; m <param.nTarget ; m++){
+                    visSet.bearingHistoryArrowBase[m].points.clear();
+                    visSet.bearingHistoryArrowBase[m].points.push_back(curPlanPose.getTranslation().toGeometry());
+                    visSet.bearingHistoryArrowBase[m].points.push_back(curTargetPoint[m].getTranslation().toGeometry());
+                    visSet.bearingHistoryArrowBase[m].id = visSet.bearingHistory[m].markers.size() ;
+                    visSet.bearingHistory[m].markers.push_back(visSet.bearingHistoryArrowBase[m]);
+                }
+
+                state.tLastBearingCollect = curTime;
+
+            }
+
             pubSet.curPlanHistory.publish(visSet.curPlanHistory);
+            for (int m =0 ; m < param.nTarget ; m++){
+                pubSet.bearingHistory[m].publish(visSet.bearingHistory[m]);
+                pubSet.targetHistory[m].publish(visSet.targetHistory[m]);
+            }
+
         }
     }
 

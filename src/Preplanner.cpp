@@ -40,7 +40,7 @@ namespace dual_chaser{
             FILL_CELL_RIGHT(" > [R-B]")
             MID_RULE_DASH(nEffectiveCol)
 
-            for (int n = 1 ; n < N  ; n++){
+            for (int n = 1 ; n <= N  ; n++){
                 FILL_TAG(to_string(n-1) + "->" + to_string(n));
                 FILL_CELL_RIGHT( to_string(nFeasibleAndConnectedNodes[n-1]) + "/" + to_string(nTriedConnectionNode[n-1]) );
                 FILL_CELL_RIGHT(-nRejectEdgesTargetCollision[n - 1]);
@@ -63,6 +63,8 @@ namespace dual_chaser{
             asyncSpinnerPtr->start();
         }
         void Preplanner::initROS() {
+
+
             /**
              * 1. Parameter parsing
              */
@@ -78,7 +80,7 @@ namespace dual_chaser{
             nh.param("preplanner/min_height",param.minZ,-10000.0f);
             nh.param("preplanner/max_height",param.maxZ,10000.0f);
             nh.param("preplanner/des_dist",param.desShotDist,float(3.5));
-            nh.param("preplanner/score_field_max_connect",param.maxDist,float(4.5));
+            nh.param("preplanner/score_field_max_connect_vel", param.maxConnectVelocity, float(4.5));
             nh.param("preplanner/n_thread",param.nThread,6);
 
             nh.param("preplanner/weight/distance",param.w_dist,float(1.0));
@@ -86,9 +88,12 @@ namespace dual_chaser{
             nh.param("preplanner/seed_obst_clear_rad",param.seedClearRad,float(0.5));
             nh.param("preplanner/target_collision_simple",param.TC_simple,false);
             nh.param("preplanner/target_collision_sphere_rad",param.targetCollisionEps,float(0.8));
-            nh.param("preplanner/target_collision_ellipse/x", param.TC_ellipsoidScaleCollision(0), double(0.4));
-            nh.param("preplanner/target_collision_ellipse/y", param.TC_ellipsoidScaleCollision(1), double(0.4));
-            nh.param("preplanner/target_collision_ellipse/z", param.TC_ellipsoidScaleCollision(2), double(0.8));
+            nh.param("preplanner/target_collision_ellipse_line/x", param.TC_ellipsoidScaleCollisionMove(0), double(0.4));
+            nh.param("preplanner/target_collision_ellipse_line/y", param.TC_ellipsoidScaleCollisionMove(1), double(0.4));
+            nh.param("preplanner/target_collision_ellipse_line/z", param.TC_ellipsoidScaleCollisionMove(2), double(0.8));
+            nh.param("preplanner/target_collision_ellipse_step/x", param.TC_ellipsoidScaleCollisionStep(0), double(0.4));
+            nh.param("preplanner/target_collision_ellipse_step/y", param.TC_ellipsoidScaleCollisionStep(1), double(0.4));
+            nh.param("preplanner/target_collision_ellipse_step/z", param.TC_ellipsoidScaleCollisionStep(2), double(0.8));
             nh.param("preplanner/occlusion_clearance",param.occlusionEps,float(0.1));
             nh.param("preplanner/weight/bearing",param.w_bearing,float(0.3));
             nh.param("preplanner/weight/rel_distance",param.w_des_rel_dist,float(0.5));
@@ -150,9 +155,9 @@ namespace dual_chaser{
                 visSet.markerTargetCollisionBase.scale.y = 2 * param.targetCollisionEps;
                 visSet.markerTargetCollisionBase.scale.z = 2 * param.targetCollisionEps;
             }else{
-                visSet.markerTargetCollisionBase.scale.x = 2 * param.TC_ellipsoidScaleCollision(0);
-                visSet.markerTargetCollisionBase.scale.y = 2 * param.TC_ellipsoidScaleCollision(1);
-                visSet.markerTargetCollisionBase.scale.z = 2 * param.TC_ellipsoidScaleCollision(2);
+                visSet.markerTargetCollisionBase.scale.x = 2 * param.TC_ellipsoidScaleCollisionMove(0);
+                visSet.markerTargetCollisionBase.scale.y = 2 * param.TC_ellipsoidScaleCollisionMove(1);
+                visSet.markerTargetCollisionBase.scale.z = 2 * param.TC_ellipsoidScaleCollisionMove(2);
             }
 
             visSet.markerTargetCollisionBase.color = param.targetCollisionVolumeColor;
@@ -287,7 +292,7 @@ namespace dual_chaser{
                 PointSet chaserPoints = chaserMove.samplePoints(nTestPoints);
                 for (int n = 0; n < nTestPoints ; n++){
                     EllipsoidNoRot ellipse(targetPoints.points[n].toEigen().cast<double>(),
-                            param.TC_ellipsoidScaleCollision);
+                            param.TC_ellipsoidScaleCollisionMove);
                     if (ellipse.evalDist(chaserPoints.points[n]) <= 0 )
                         return true;
                 }
@@ -452,6 +457,7 @@ namespace dual_chaser{
             // get param for graph  ...
             int N = state.nLastQueryStep;  // future step
             int M = param.nTarget; // target number
+            float dt = state.timeKnotLocal[1] - state.timeKnotLocal[0] ; // time interval time knots (uniform assumed)
 
             // initialize graph (e.g. pre-allocation)
             vector<PointSet> points_path(N);
@@ -459,9 +465,20 @@ namespace dual_chaser{
             int nMaxNodes = 1;
             int nMaxEdges = 0;
             int prevMaxNodes = 1;
+
+            // determine candidate points
             for (int n = 0 ; n < N ; n++){
+                // hollow to determine candidate points
+                vector<EllipsoidNoRot> hollow;
+                for (int m =0; m < M ; m++){
+                    hollow.emplace_back(state.futureTargetPoints[m].traj.points[n].toEigen().cast<double>(),
+                                        param.TC_ellipsoidScaleCollisionStep);
+                }
+                hollow.emplace_back(state.targetSetPath[n].center().toEigen().cast<double>(),
+                                    param.TC_ellipsoidScaleCollisionStep);
+
                 // fill points and scores from vsf
-                state.vsf_path[n].getPnt(param.graphNodeStride,points_path[n]);
+                state.vsf_path[n].getPnt(param.graphNodeStride,hollow,points_path[n]);
                 n_path[n] = points_path[n].points.size();
                 nMaxNodes += n_path[n];
                 nMaxEdges += prevMaxNodes*nMaxNodes;
@@ -546,7 +563,7 @@ namespace dual_chaser{
                         reporter.nRejectEdgesTargetCollision.back() += (int) isTargetCollision;
 
                         if (not isTargetCollision) { // did collide with target ?
-                            bool isDistanceViolation = dist > param.maxDist;
+                            bool isDistanceViolation = dist / float(dt) >  (n > 1 ?  param.maxConnectVelocity : 1.3 *param.maxConnectVelocity);
                             reporter.nRejectEdgesDistanceAllowable.back() += (int) (isDistanceViolation);
                             if (not isDistanceViolation) { // maximally connectable ?
 
@@ -616,7 +633,7 @@ namespace dual_chaser{
                                             avgCostBearing += bearing;
                                             avgCostRelDist += desRelDistDeviation;
                                             avgCostDir += angle;
-                                            if (dist > param.maxDist)
+                                            if (dist > param.maxConnectVelocity)
                                                 ROS_WARN("something wrong!");
                                         }
                                     }

@@ -57,14 +57,19 @@ namespace dual_chaser{
             int nTarget = 2;
             float horizon = 1.0;
             float historyCollectInterval = 0.1;
+            float bearingCollectInterval = 0.2;
             PLANNING_LEVEL mode = PLANNING_LEVEL::PRE_PLANNING;
             float lengthStepCorridorPoints = 0.3 ;
             float knotEps = 0.3;
             float collisionEps_CO = 0.3;
             Vector3d TC_ellipsoidScaleCollision;
+
             std_msgs::ColorRGBA corridorColor;
+
+
             int polyOrder = 5;
             int smoothPathEvalPts ;
+            float planPoseSmoothing = 0.8;
 
             string worldFrameId = "map";
             string chaserFrameId = "drone_link"; // simple re broadcast zedFrameId as current client (NUC) time
@@ -77,9 +82,11 @@ namespace dual_chaser{
             ros::Time tLastChaserStateUpdate;
             ros::Time tLastPlanningTrigger;  // even if planning failed, it is recorded ?
             ros::Time tLastPlanningCollect = ros::Time(0);
+            ros::Time tLastBearingCollect = ros::Time(0);
             bool isChaserPose = false;
             bool isCorridor = false;
             bool isPlan = false;
+            bool isPlanPoseEmitted = false;
             bool isLastPlanningFailed = false;
             int nLastCorridor = 0;
 
@@ -87,12 +94,16 @@ namespace dual_chaser{
             smooth_planner::PlanningOutput curPlan; // current planning result (smooth plan)
             Pose curChaserPose; // latest update at async callback
             Point curChaserVelocity; // latest update at async callback (world frame)
+            ChaserState lastEmitPlanPose; // update in emitCurrentPlanningPose
 
             ChaserState getChaserState() const; // returns current drone state
             ChaserState getPlanChaserState() const ; // returns current planning evaluation
             ChaserState getPlanChaserState(PointSet targets,
                                            bool seeFromDroneState = true ) const ; // returns current planning evaluation
 
+            ChaserState getPlanChaserState(PointSet targets,
+                                           ChaserState smoothFrom, float smoothing,
+                                           bool seeFromDroneState = true ) const ; // returns current planning evaluation
 
             geometry_msgs::TwistStamped getVelocityMarker(string chaserFrame) const;
             nav_msgs::Path getPlanTraj(string worldFrameId, int nPnt) const;
@@ -103,6 +114,9 @@ namespace dual_chaser{
             ros::Publisher corridor;
             ros::Publisher curPlan;
             ros::Publisher curPlanHistory;
+            ros::Publisher bearingHistoryArrowBase[2];
+            ros::Publisher bearingHistory[2]; // target A and B
+            ros::Publisher targetHistory[2];
         };
 
         struct VisualizationSet{
@@ -111,6 +125,9 @@ namespace dual_chaser{
             visualization_msgs::Marker eraser;
             nav_msgs::Path curPlan;
             nav_msgs::Path curPlanHistory;
+            visualization_msgs::Marker bearingHistoryArrowBase[2];
+            visualization_msgs::MarkerArray bearingHistory[2]; // target A and B
+            nav_msgs::Path targetHistory[2];
         };
 
     private:
@@ -147,7 +164,7 @@ namespace dual_chaser{
 
         bool plan();
         bool trigger();
-        Pose evalCurrentPlanningPose();
+        Pose emitCurrentPlanningPose();
     public:
         Wrapper();
         ~Wrapper() {asyncSpinnerPtr->stop();};

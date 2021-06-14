@@ -106,7 +106,6 @@ namespace dual_chaser {
 
         ScoreFieldBase(){};
         ScoreFieldBase(FieldParam param);
-
     public:
 
         pclIntensity getFieldIntensity(double slice_leveel,double eps = 0) const ;
@@ -120,6 +119,7 @@ namespace dual_chaser {
         }
         void getPntAndValue (int nStride,PointSet& pnts,vector<float>& vals);
         void getPnt (int nStride,PointSet& pnts);
+        void getPnt (int nStride,const vector<EllipsoidNoRot>& hollowing,PointSet& pnts);
         float eval(Point pnt) const {
             return eval(pnt2ind(pnt));
         }

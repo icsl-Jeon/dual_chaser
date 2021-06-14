@@ -39,12 +39,13 @@ namespace dual_chaser{
             int nThread = 6; // thread to compute VSF
             int graphNodeStride = 2; // stride when selecting the graph nodes from VSF grid
             float targetCollisionEps = 0.3; // used in simple sphere model for chaser-target collision checking
-            Eigen::Vector3d TC_ellipsoidScaleCollision; //  used in ellipsoid model for chaser-target collision checking
+            Eigen::Vector3d TC_ellipsoidScaleCollisionMove; //  used in ellipsoid model for chaser-target collision checking
+            Eigen::Vector3d TC_ellipsoidScaleCollisionStep; //  used in ellipsoid model for chaser-target collision checking
             float collisionEps = 0.4;
             float occlusionEps = 0.3;
             float collisionRayStride = 0.1;
             float maxBearing = M_PI/3.0*2.0;
-            float maxDist = 3.0; // maximum connection distance
+            float maxConnectVelocity = 3.0; // maximum connection distance
             float desShotDist = 3;
 
             // graph solve

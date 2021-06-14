@@ -129,6 +129,37 @@ void ScoreFieldBase::getPnt(int nStride, PointSet& pnts) {
                 }
 }
 
+
+void ScoreFieldBase::getPnt(int nStride, const vector<EllipsoidNoRot>& hollowing, PointSet& pnts) {
+    pnts.points.clear();
+    int nTotal =(floor((Nx-1)/float(nStride))+1) *
+                (floor((Ny-1)/float(nStride))+1)*
+                (floor((Nz-1)/float(nStride))+1);
+    pnts.points.resize(nTotal);
+    int nInsert =0 ;
+    if (isFieldInit)
+        for (int nx = 0; nx < Nx ; nx+= nStride)
+            for (int ny  = 0 ; ny < Ny ; ny+=nStride)
+                for (int nz  = 0 ; nz < Nz ; nz+=nStride) {
+                    Point pnt = ind2pnt(ind3(nx, ny, nz));
+                    bool isInclude = false;
+
+                    for (const auto & ellipse : hollowing){
+                        if (ellipse.evalDist(pnt) <= 0 ){
+                            isInclude = true;
+                            break;
+                        }
+                    }
+
+                    if (not isInclude){
+                        pnts.points[nInsert] = pnt ;
+                        nInsert++;
+
+                    }
+                }
+}
+
+
 pclIntensity ScoreFieldBase::getFieldIntensity(double slice_level,double eps) const {
     pclIntensity pcl;
 

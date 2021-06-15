@@ -4,17 +4,18 @@ n_target: 2 # number of target
 early_end: 1.0 # horizon - early_end = period
 desired_position_smoothing: 0.9 # [0,1]
 history_collect_interval: 0.2 # [s]
+only_preplan: false # true : only preplan, at initial state =  drone state
 preplanner:
   seed_obst_clear_rad: 0.6 # clearing radius for remove initial planning point for preplanner
   n_max_step: 3 # maximum number of discretiazation over horizon
   edf_max_dist: 2.0 # max distance to be calculated in euclidean distance field
   max_bearing: 1.25 # max distance to be calculated in euclidean distance field
   des_dist: 2.5 # desired relative distance to target
-  score_field_resolution: 0.4 # resolution for visibility fields
+  score_field_resolution: 0.3 # resolution for visibility fields
   score_field_max_connect_vel: 4.0 # [m/s] maximum connectable edge length
-  score_field_node_stride: 1 # stride to build candidate nodes on scorefield
+  score_field_node_stride: 2 # stride to build candidate nodes on scorefield
   score_field_margin:
-    xy: 3.0 # extension to +/-xy
+    xy: 3.3 # extension to +/-xy
     z_top: 1.0 # extension to +/-z w.r.t target at each step
     z_bottom: 0.0 # extension to +/-z w.r.t target at each step
   collision_clearance: 0.6 # increasing this can sort out unsafe points and can reduce graph build time
@@ -28,8 +29,8 @@ preplanner:
     z: 2.5
   target_collision_ellipse_step:  # vsf candidate nodes outside of this volume (also inter-ellipse) at each step .
     # make sure r = r_{drone} + r_{human}
-    x: 2.0
-    y: 2.0
+    x: 2.3
+    y: 2.3
     z: 4.0
   target_occlusion_ellipse: # volume to consider inter occlusion (semi-axis length) and target-collision
     x: 0.6

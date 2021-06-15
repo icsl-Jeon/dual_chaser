@@ -41,7 +41,11 @@ namespace dual_chaser{
 
         // This will be saved to the state of Wrapper
         struct PlanningOutput{
-            smooth_planner::PolynomialStamped smoothTrajectory;
+            float validHorizon;
+            smooth_planner::PolynomialStamped droneTrajectory;
+            bool isSafe( octomap_server::EdtOctomapServer* edtServer,
+                        ros::Time fromHere, float safeRad) const ;
+
         };
 
     }
@@ -61,11 +65,9 @@ namespace dual_chaser{
             PLANNING_LEVEL mode = PLANNING_LEVEL::PRE_PLANNING;
             float lengthStepCorridorPoints = 0.3 ;
             float knotEps = 0.3;
-            float collisionEps_CO = 0.3;
+            float OC_collisionEps = 0.3;
             Vector3d TC_ellipsoidScaleCollision;
-
             std_msgs::ColorRGBA corridorColor;
-
 
             int polyOrder = 5;
             int smoothPathEvalPts ;
@@ -131,7 +133,8 @@ namespace dual_chaser{
         };
 
     private:
-        mutex mutex_;
+        mutex mutexVis;
+        mutex mutexState;
         PublisherSet pubSet;
         VisualizationSet visSet;
         Param param;

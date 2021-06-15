@@ -2,6 +2,42 @@
 
 namespace dual_chaser{
 
+    namespace smooth_planner{
+        /**
+         * check whether the polynomial collides with obstacles
+         * @param edtServer
+         * @param fromHere
+         * @param safeRad
+         * @return
+         * @bug edt locking included. Thus, it should be called in the same thread with preplanner
+         */
+        bool PlanningOutput::isSafe(octomap_server::EdtOctomapServer * edtServer,
+                                    ros::Time fromHere, float safeRad)  const {
+            float t0 = (fromHere - droneTrajectory.refTime).toSec();
+            float tf = validHorizon;
+            if (t0 >= tf){
+                ROS_ERROR("Wrapper: unknown eval time (%f > %f ) for testing safety of smooth trajectory",t0,tf);
+                return false;
+            }
+            float dt = 0.1;
+            bool safe = true;
+            edtServer->getLocker().lock();
+            float t = t0;
+            while(true){
+                Point pnt = droneTrajectory.trajPtr->eval(t, 0);
+                if (edtServer->getDistance(octomap::point3d(pnt.x, pnt.y, pnt.z)) < safeRad ){
+                    safe = false;
+                    break;
+                }
+                t += dt;
+                if (t > tf)
+                   break;
+            }
+            edtServer->getLocker().unlock();
+            return safe;
+        }
+    }
+
     Wrapper::Wrapper() : nhPrivate("~"){
         edtServerPtr = new octomap_server::EdtOctomapServer;
         targetManagerPtr = new TargetManager(edtServerPtr);
@@ -98,6 +134,8 @@ namespace dual_chaser{
     }
 
     void Wrapper::prepare(preplanner::PlanningInput &planningInput) {
+
+
         ros::Time curTime = ros::Time::now();
         planningInput.predictionOutput = state.predictionOutput;
         planningInput.tTrigger = curTime;
@@ -105,11 +143,13 @@ namespace dual_chaser{
         for (int n = 0; n < param.nTarget ; n++)
             planningInput.targetInit.points.push_back(targetInitPose[n].getTranslation());
 
+        mutexState.lock();
         if (not state.isPlan)
             planningInput.initStateForPlanning = state.getChaserState();
         else{
             planningInput.initStateForPlanning = state.getPlanChaserState();
         }
+        mutexState.unlock();
     }
 
     vector<LoosePin3f> Wrapper::getCorridors(Traj preplanning,vector<Traj> targetPath) {
@@ -164,11 +204,14 @@ namespace dual_chaser{
         planningInput.prediction = planningOutput.targetPoints;
         planningInput.tTrigger = state.tLastPlanningTrigger;
 
+//        mutexState.lock();
+        // read state
         if (not state.isPlan)
             planningInput.initStateForPlanning = state.getChaserState();
         else{
             planningInput.initStateForPlanning = state.getPlanChaserState();
         }
+//        mutexState.unlock();
     }
 
 
@@ -178,12 +221,26 @@ namespace dual_chaser{
             return false;
         }
 
+
+
         return true;
     }
 
     bool Wrapper::needPlanning() {
-        if (state.isLastPlanningFailed)
+        // If last planning failed,
+        if (state.isLastPlanningFailed) {
+            ROS_WARN("Wrapper: last planning failed. trigger new.");
             return true;
+        }
+        // If current planning becomes infeasible due to obstacle collision
+        if (state.isPlan){
+            ros::Time curTime = ros::Time::now();
+            if (not state.curPlan.isSafe(edtServerPtr,curTime,param.OC_collisionEps)){
+                ROS_WARN("Wrapper: planning becomes OC. trigger new");
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -225,12 +282,25 @@ namespace dual_chaser{
 
 
         /**
-         *  update state visualization
+         *  update state
          */
-        mutex_.lock();
-
-        // corridor (this will be definitely obtained if preplanning was successful)
+        mutexState.lock();
         state.isCorridor = true;
+        // smooth trajectory (update only if qp was solved\)
+        if(not state.isPlan)
+            state.isPlan = qpSolve;
+        if (qpSolve) {
+            state.curPlan.droneTrajectory.refTime = planningInput.tTrigger;
+            state.curPlan.droneTrajectory.trajPtr = trajGen;
+            state.curPlan.validHorizon = param.horizon;
+        }
+        mutexState.unlock();
+
+
+        /**
+         *  update visualization
+         */
+        mutexVis.lock();
         visSet.corridorMarkerArray.markers.clear();
         int id = 0;
         for (const auto &  corridor: corridors){
@@ -253,15 +323,11 @@ namespace dual_chaser{
         }
         state.nLastCorridor = corridors.size();
 
-        // smooth trajectory (update only if qp was solved\)
-        if(not state.isPlan)
-            state.isPlan = qpSolve;
         if (qpSolve) {
-            state.curPlan.smoothTrajectory.refTime = planningInput.tTrigger;
-            state.curPlan.smoothTrajectory.trajPtr = trajGen;
             visSet.curPlan = state.getPlanTraj(param.worldFrameId,param.smoothPathEvalPts);
         }
-        mutex_.unlock();
+        mutexVis.unlock();
+
         return qpSolve;
     }
 
@@ -298,12 +364,12 @@ namespace dual_chaser{
         returnState.stamp =curTime;
         if (isPlan){
             // E/H horizon check
-            float tEval = (curTime - curPlan.smoothTrajectory.refTime).toSec();
+            float tEval = (curTime - curPlan.droneTrajectory.refTime).toSec();
             if (tEval > horizon)
                 ROS_WARN("Wrapper: eval on planning exceed horizon. Clamping time! ");
             tEval = min (tEval , horizon);
-            returnState.position = curPlan.smoothTrajectory.trajPtr->eval(tEval,0);
-            returnState.velocity = curPlan.smoothTrajectory.trajPtr->eval(tEval,1);
+            returnState.position = curPlan.droneTrajectory.trajPtr->eval(tEval, 0);
+            returnState.velocity = curPlan.droneTrajectory.trajPtr->eval(tEval, 1);
 
         }else{
             ROS_ERROR("Wrapper: requested get-chaser plan but still no plan");
@@ -369,7 +435,7 @@ namespace dual_chaser{
         VectorXf tEval(Neval); tEval.setLinSpaced(Neval,0,horizon);
         for (int n = 0 ; n < Neval ; n++){
             float tp = tEval(n);
-            Point position = curPlan.smoothTrajectory.trajPtr->eval(tp,0);
+            Point position = curPlan.droneTrajectory.trajPtr->eval(tp, 0);
             geometry_msgs::PoseStamped poseStamped;
             poseStamped.pose.position = position.toGeometry();
             path.poses.push_back(poseStamped);
@@ -436,8 +502,8 @@ namespace dual_chaser{
                 if (not plan()) {
                     // do some exception handling
                     ROS_ERROR("Wrapper: planning failed. will trigger new..");
-                }
-            ROS_INFO("Wrapper: planning success");
+                }else
+                    ROS_INFO("Wrapper: planning success");
             ros::Rate(30).sleep();
             ros::spinOnce(); // for global callback queue (e.g. octomap)
         }
@@ -479,93 +545,103 @@ namespace dual_chaser{
      * @param event
      */
     void Wrapper::asyncTimerCallback(const ros::TimerEvent &event) {
+
         ros::Time curTime = ros::Time::now();
-        // 1. update chaser pose
-        tf::StampedTransform transform;
-        try {
-            tfListenerPtr->lookupTransform(param.worldFrameId, param.zedFrameId,
-                                           ros::Time(0), transform);
-            transform.child_frame_id_ = param.chaserFrameId;
-            transform.stamp_ = curTime;
-            tfBroadcasterPtr->sendTransform(transform);
+        if (mutexState.try_lock()){
+            // 1. update chaser pose
+            tf::StampedTransform transform;
+            try {
+                tfListenerPtr->lookupTransform(param.worldFrameId, param.zedFrameId,
+                                               ros::Time(0), transform);
+                transform.child_frame_id_ = param.chaserFrameId;
+                transform.stamp_ = curTime;
+                tfBroadcasterPtr->sendTransform(transform);
 
-            Pose newPose(transform);
-            float dt = (transform.stamp_ - state.tLastChaserStateUpdate).toSec();
-            state.curChaserVelocity = (newPose.getTranslation() - state.curChaserPose.getTranslation()) * (1.0/dt);
-            state.curChaserPose = newPose;
-            state.tLastChaserStateUpdate = curTime;
-            state.isChaserPose  = true;
+                Pose newPose(transform);
+                float dt = (transform.stamp_ - state.tLastChaserStateUpdate).toSec();
+                state.curChaserVelocity = (newPose.getTranslation() - state.curChaserPose.getTranslation()) * (1.0/dt);
+                state.curChaserPose = newPose;
+                state.tLastChaserStateUpdate = curTime;
+                state.isChaserPose  = true;
 
 
-        } catch (tf::TransformException& ex) {
-            ROS_ERROR_STREAM(ex.what());
+            } catch (tf::TransformException& ex) {
+                ROS_ERROR_STREAM(ex.what());
+            }
+            mutexState.unlock();
+        }else{
+            ROS_WARN("Wrapper: state update locked by preparing planning");
         }
 
         // 2. visualize update & publish the lsat "updated" state
-        if (state.isChaserPose){
-            pubSet.chaserTwist.publish(state.getVelocityMarker(param.chaserFrameId));
-        }
-        if (state.isCorridor) {
-            updateTime(visSet.corridorMarkerArray, curTime);
-            pubSet.corridor.publish(visSet.corridorMarkerArray);
-        }
-        if (state.isPlan){
-            visSet.curPlan.header.stamp = curTime;
-            pubSet.curPlan.publish(visSet.curPlan); // planning trajectory
-            Pose curPlanPose = emitCurrentPlanningPose(); // output planning pose from current state
-            vector<Pose> curTargetPoint = targetManagerPtr->lookupLastTargets();
+        if (mutexVis.try_lock()){
 
-            // broadcast desired tf
-            auto desiredTf = curPlanPose.toTf(param.worldFrameId,param.chaserPlanningFrameId,curTime);
-            tfBroadcasterPtr->sendTransform(desiredTf);
-
-            // collect current planning
-            if ((curTime - state.tLastPlanningCollect).toSec() > param.historyCollectInterval){
-
-                // chaser
-                visSet.curPlanHistory.header.stamp = curTime;
-                geometry_msgs::PoseStamped poseStamped;
-                poseStamped.pose = curPlanPose.toGeoPose();
-                poseStamped.header.frame_id = param.worldFrameId;
-                poseStamped.header.stamp = curTime;
-                visSet.curPlanHistory.poses.push_back(poseStamped);
-
-                // target
-                for (int m = 0; m < param.nTarget ; m++){
-                    visSet.targetHistory[m].header.stamp = curTime;
-                    visSet.targetHistory[m].header.frame_id = param.worldFrameId;
-                    poseStamped.pose = curTargetPoint[m].toGeoPose();
-                    visSet.targetHistory[m].poses.push_back(poseStamped);
-                }
-                state.tLastPlanningCollect = curTime;
+            if (state.isChaserPose){
+                pubSet.chaserTwist.publish(state.getVelocityMarker(param.chaserFrameId));
             }
+            if (state.isCorridor) {
+                updateTime(visSet.corridorMarkerArray, curTime);
+                pubSet.corridor.publish(visSet.corridorMarkerArray);
+            }
+            if (state.isPlan) {
+                visSet.curPlan.header.stamp = curTime;
+                pubSet.curPlan.publish(visSet.curPlan); // planning trajectory
+                Pose curPlanPose = emitCurrentPlanningPose(); // output planning pose from current state
+                vector<Pose> curTargetPoint = targetManagerPtr->lookupLastTargets();
 
+                // broadcast desired tf
+                auto desiredTf = curPlanPose.toTf(param.worldFrameId, param.chaserPlanningFrameId, curTime);
+                tfBroadcasterPtr->sendTransform(desiredTf);
 
-            if ((curTime - state.tLastBearingCollect).toSec() > param.bearingCollectInterval) {
-                for (int m = 0; m <param.nTarget ; m++){
-                    visSet.bearingHistoryArrowBase[m].points.clear();
-                    visSet.bearingHistoryArrowBase[m].points.push_back(curPlanPose.getTranslation().toGeometry());
-                    visSet.bearingHistoryArrowBase[m].points.push_back(curTargetPoint[m].getTranslation().toGeometry());
-                    visSet.bearingHistoryArrowBase[m].id = visSet.bearingHistory[m].markers.size() ;
-                    visSet.bearingHistory[m].markers.push_back(visSet.bearingHistoryArrowBase[m]);
+                // collect current planning
+                if ((curTime - state.tLastPlanningCollect).toSec() > param.historyCollectInterval) {
+
+                    // chaser
+                    visSet.curPlanHistory.header.stamp = curTime;
+                    geometry_msgs::PoseStamped poseStamped;
+                    poseStamped.pose = curPlanPose.toGeoPose();
+                    poseStamped.header.frame_id = param.worldFrameId;
+                    poseStamped.header.stamp = curTime;
+                    visSet.curPlanHistory.poses.push_back(poseStamped);
+
+                    // target
+                    for (int m = 0; m < param.nTarget; m++) {
+                        visSet.targetHistory[m].header.stamp = curTime;
+                        visSet.targetHistory[m].header.frame_id = param.worldFrameId;
+                        poseStamped.pose = curTargetPoint[m].toGeoPose();
+                        visSet.targetHistory[m].poses.push_back(poseStamped);
+                    }
+                    state.tLastPlanningCollect = curTime;
                 }
 
-                state.tLastBearingCollect = curTime;
+
+                if ((curTime - state.tLastBearingCollect).toSec() > param.bearingCollectInterval) {
+                    for (int m = 0; m < param.nTarget; m++) {
+                        visSet.bearingHistoryArrowBase[m].points.clear();
+                        visSet.bearingHistoryArrowBase[m].points.push_back(curPlanPose.getTranslation().toGeometry());
+                        visSet.bearingHistoryArrowBase[m].points.push_back(
+                                curTargetPoint[m].getTranslation().toGeometry());
+                        visSet.bearingHistoryArrowBase[m].id = visSet.bearingHistory[m].markers.size();
+                        visSet.bearingHistory[m].markers.push_back(visSet.bearingHistoryArrowBase[m]);
+                    }
+
+                    state.tLastBearingCollect = curTime;
+
+                }
+
+                pubSet.curPlanHistory.publish(visSet.curPlanHistory);
+                for (int m = 0; m < param.nTarget; m++) {
+                    pubSet.bearingHistory[m].publish(visSet.bearingHistory[m]);
+                    pubSet.targetHistory[m].publish(visSet.targetHistory[m]);
+                }
 
             }
-
-            pubSet.curPlanHistory.publish(visSet.curPlanHistory);
-            for (int m =0 ; m < param.nTarget ; m++){
-                pubSet.bearingHistory[m].publish(visSet.bearingHistory[m]);
-                pubSet.targetHistory[m].publish(visSet.targetHistory[m]);
-            }
-
+            mutexVis.unlock();
+        }else{
+            ROS_WARN("Wrapper:  vis update locked by updating visSet after planning");
         }
+
     }
-
-
-
-
 
 
 }

@@ -514,7 +514,8 @@ namespace dual_chaser{
             float avgCostDir =0 ;
 
             for (int n = 1 ; n <= N ; n++){
-                int nNodes =points_path[n-1].size();
+
+                int nNodes = points_path[n-1].size();
                 N_cur_layer_pnt = 0; // number of registered number of at this time step
                 N_cur_layer_edge = 0; // number of in edge to this layer
                 Eigen::VectorXi register_mask(nNodes); register_mask.setZero();
@@ -643,6 +644,8 @@ namespace dual_chaser{
                     }
                 }
 
+
+
                 reporter.nEdgesFromPrevious.push_back(N_cur_layer_edge);
                 reporter.nFeasibleAndConnectedNodes.push_back(N_cur_layer_pnt);
 
@@ -668,6 +671,7 @@ namespace dual_chaser{
                 reporter.avgCostRelDist = avgCostRelDist/edge_insert_idx;
                 reporter.avgCostDir = avgCostDir/edge_insert_idx;
             }
+
 
             mutex_.lock();
             visSet.candidateNodesPath.clear();

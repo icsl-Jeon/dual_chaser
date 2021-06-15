@@ -161,8 +161,6 @@ namespace dual_chaser{
                 MultiVisibilityScoreField* vsf_path;
                 ChaserGraph curGraph;
                 Path solutionPath;
-
-
             };
 
 
@@ -182,6 +180,7 @@ namespace dual_chaser{
             // MISC UTILS
             bool TC_collision (const LineSegment& targetMove,
                                const LineSegment& chaserMove) const;
+            bool extendLayer(ChaserGraph& chaserGraph, const PointSet& newLayer, Param tryParam);
 
             // SUB ROUTINES
             bool createVsfPath();

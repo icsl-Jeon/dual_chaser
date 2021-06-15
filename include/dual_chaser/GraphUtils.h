@@ -28,6 +28,7 @@ namespace dual_chaser{
         ChaserGraph(GraphParm param):param(param) {};
         vector<pcl::PointCloud<pcl::PointXYZ>> getPCLPath(string frame_id,
                                                           int drawUntil = numeric_limits<int>::max());
+
         void report();
         bool edge_relax();
         bool solve();

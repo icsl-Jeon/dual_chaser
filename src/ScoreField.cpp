@@ -67,7 +67,6 @@ ind3 ScoreFieldBase::pnt2ind(Point pnt) const {
 
 Point ScoreFieldBase::ind2pnt(ind3 ind ) const {
 
-
     assert(isInRange(ind.x,0) and isInRange(ind.y,1) and isInRange(ind.z,2) and "ind2pnt index out of range");
     Point pnt;
     pnt.x = fieldParam.origin.x + fieldParam.resolution * ind.x;
@@ -113,7 +112,7 @@ void ScoreFieldBase::getPntAndValue(int nStride, PointSet& pnts, vector<float>& 
     }
 }
 
-void ScoreFieldBase::getPnt(int nStride, PointSet& pnts) {
+void ScoreFieldBase::getPnt(int nStride, PointSet& pnts)  {
     pnts.points.clear();
     int nTotal =(floor((Nx-1)/float(nStride))+1) *
             (floor((Ny-1)/float(nStride))+1)*
@@ -128,6 +127,7 @@ void ScoreFieldBase::getPnt(int nStride, PointSet& pnts) {
                     nInsert++;
                 }
 }
+
 
 
 void ScoreFieldBase::getPnt(int nStride, const vector<EllipsoidNoRot>& hollowing, PointSet& pnts) {
@@ -150,14 +150,64 @@ void ScoreFieldBase::getPnt(int nStride, const vector<EllipsoidNoRot>& hollowing
                             break;
                         }
                     }
-
                     if (not isInclude){
                         pnts.points[nInsert] = pnt ;
                         nInsert++;
-
                     }
                 }
 }
+
+/**
+ * point sampler (center - lengthMin) ~ (center + lengthMax) / not origin
+ * @param stride
+ * @param lengthMin [m] 0<= <= (lx,ly,lz)/2
+ * @param lengthMax [m]
+ * @param pnts
+ */
+void ScoreFieldBase::getPnt(int stride, float *lengthMin, float *lengthMax, const vector<EllipsoidNoRot>& hollowing ,  PointSet &pnts) {
+    pnts.points.clear();
+    Point centerPnt = fieldParam.origin + Point(fieldParam.lx, fieldParam.ly , fieldParam.lz)/2.0;
+    ind3 centerCell = pnt2ind(centerPnt);
+    int iMin = floor(lengthMin[0] / fieldParam.resolution);
+    int jMin = floor(lengthMin[1] / fieldParam.resolution);
+    int kMin = floor(lengthMin[2] / fieldParam.resolution);
+
+    int iMax = floor(lengthMax[0] / fieldParam.resolution);
+    int jMax = floor(lengthMax[1] / fieldParam.resolution);
+    int kMax = floor(lengthMax[2] / fieldParam.resolution);
+
+    for (int i = iMin ; i < iMax ; i+= stride)
+        for (int j = jMin ; j < jMax ; j+= stride)
+            for (int k = kMin ; k < kMax ; k+= stride) {
+
+                for (int sig1 = 0 ; sig1 < 2 ; sig1++)
+                    for (int sig2 = 0 ; sig2 < 2 ; sig2++)
+                        for (int sig3 = 0 ; sig3 < 2 ; sig3++) {
+
+                            ind3 currentCell(centerCell.x + i * (sig1 == 0 ? -1 : 1),
+                                             centerCell.y + j * (sig2 == 0 ? -1 : 1),
+                                             centerCell.z + k * (sig3 == 0 ? -1 : 1));
+
+                            Point pnt = ind2pnt(currentCell);
+
+                            bool isInclude = false;
+                            for (const auto & ellipse : hollowing){
+                                if (ellipse.evalDist(pnt) <= 0 ){
+                                    isInclude = true;
+                                    break;
+                                }
+                            }
+
+                            if (not isInclude)
+                                pnts.points.push_back( pnt) ;
+
+                        }
+
+            }
+}
+
+
+
 
 
 pclIntensity ScoreFieldBase::getFieldIntensity(double slice_level,double eps) const {

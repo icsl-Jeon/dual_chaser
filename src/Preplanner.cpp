@@ -5,10 +5,8 @@
 
 namespace dual_chaser{
     namespace preplanner{
-
-
         void Report::init() {
-            N = 1; // longest tried time step for edge connection
+            N = 0; // longest tried time step for edge connection
             nRejectEdgesTargetCollision.clear();
             nRejectEdgesDistanceAllowable.clear();
             nRejectEdgesTraverseObstacleCollision.clear();
@@ -32,7 +30,7 @@ namespace dual_chaser{
 
             TOP_RULE_STAR(nEffectiveCol)
             FILL_TAG("[u->v]")
-            FILL_CELL_RIGHT("[CV/TV]")
+            FILL_CELL_RIGHT("[CV/TE]")
             FILL_CELL_RIGHT("[R-TC]")
             FILL_CELL_RIGHT(" > [R-DV]")
             FILL_CELL_RIGHT(" > [R-OO]")
@@ -42,7 +40,12 @@ namespace dual_chaser{
 
             for (int n = 1 ; n <= N  ; n++){
                 FILL_TAG(to_string(n-1) + "->" + to_string(n));
-                FILL_CELL_RIGHT( to_string(nFeasibleAndConnectedNodes[n-1]) + "/" + to_string(nTriedConnectionNode[n-1]) );
+                if (n > 1)
+                    FILL_CELL_RIGHT( to_string(nFeasibleAndConnectedNodes[n-1]) + "/"
+                        + to_string(nFeasibleAndConnectedNodes[n-2]) + "x" + to_string(nTriedConnectionNode[n-1]) )
+                else
+                    FILL_CELL_RIGHT( to_string(nFeasibleAndConnectedNodes[n-1]) + "/"
+                                     +   "1x" + to_string(nTriedConnectionNode[n-1]) )
                 FILL_CELL_RIGHT(-nRejectEdgesTargetCollision[n - 1]);
                 FILL_CELL_RIGHT(-nRejectEdgesDistanceAllowable[n - 1]);
                 FILL_CELL_RIGHT(-nRejectEndPointOcclusion[n - 1]);
@@ -52,8 +55,11 @@ namespace dual_chaser{
                     NEW_LINE
             }
             MID_RULE_DASH(nEffectiveCol)
-            cout << "CV: connected vertex / TV: tried vertex for edge" << endl;
-            cout << "TC: target colli. /DV: distance violation/ OO pnt occlu. /OC: obst. line colli. / B: bearing";
+            cout << "CV: connected vertex / TV: tried edge" << endl;
+            cout << "Edge rejection reason" << endl;
+            cout << "TC: target colli. /DV: dist. viol./ OO pnt occlu. /OC: obst. line colli. / B: bearing" << endl;
+            cout << "graph construction [ms] " << elapseConstruction << endl;
+            cout << "graph solve [ms] " <<  elapseSolve << endl;
             MID_RULE_DASH(nEffectiveCol)
         }
 
@@ -318,10 +324,15 @@ namespace dual_chaser{
                                                        param.ellipsoidScaleOcclusion );
                 }
                 // determine size of field
-                ScoreFieldParam fieldParam(param.resolution, state.targetSetPath[n].points,
-                                           param.margin_xy,
-                                           param.margin_z_up,
-                                           param.margin_z_down,
+                vector<Point> includePoints;
+                includePoints.insert(includePoints.end(),state.targetSetPath[n].points.begin(),state.targetSetPath[n].points.end());
+                if (n ==0 )
+                    includePoints.push_back(state.chaserInit);
+                ScoreFieldParam fieldParam(param.resolution, includePoints ,
+                                           param.margin_xy ,
+//                                           param.margin_xy ,
+                                           param.margin_z_up  ,
+                                           param.margin_z_down  ,
                                            param.minZ, param.maxZ, isValidField);
 
                 if (not isValidField) {
@@ -449,9 +460,183 @@ namespace dual_chaser{
                 ROS_DEBUG("Preplanner: publish locked by plan thread");
         }
 
+        /**
+         * Extend point layer and register feasible points to graph
+         * @param chaserGraph
+         * @param n try insertion at step n (n=0,1,...,N) s.t. n = 0 current, n = nth future step
+         * @param newLayer
+         * @param tryParam
+         * @param node_insert_idx receive from previous extension result
+         * @param edge_insert_idx
+         * @return
+         */
+        LayerExtensionResult Preplanner::extendLayer(ChaserGraph &chaserGraph, int n,
+                                     const PointSet &newLayer, Param tryParam,
+                                     int& node_insert_idx, int& edge_insert_idx) {
+            LayerExtensionResult result;
+
+            float dt = state.timeKnotLocal[1] - state.timeKnotLocal[0] ; // time interval time knots (uniform assumed)
+            int M = param.nTarget;
+            Point prev_node_pnt,cur_node_pnt;
+            int nNodes = newLayer.size();
+            int N_cur_layer_pnt = 0; // number of registered number of at this time step
+            int N_cur_layer_edge = 0; // number of in edge to this layer
+            Eigen::VectorXi register_mask(nNodes); register_mask.setZero(); // 1 = survived / 0 = not connected
+
+            // order of rejection process important
+            result.nTriedConnectionNode = (nNodes) ;
+            for (int i = 0 ; i < nNodes ; i++ ){ // index in current layer
+
+                bool rejectEdgesTargetCollision = false;
+                bool rejectEdgesDistanceAllowable = false;
+                bool rejectEdgesTraverseObstacleCollision = false;
+                bool rejectEndPointOcclusion = false;
+                bool rejectEndPointBearingViolation = false;
+
+                for(int prev_node_idx = chaserGraph.node_div_location[n-1] ; prev_node_idx != chaserGraph.node_div_location[n];prev_node_idx++){
+                    prev_node_pnt = Point(chaserGraph.nodes.block(2,prev_node_idx,3,1));
+                    cur_node_pnt = newLayer.points[i];
+
+                    // Cost
+                    float dist = prev_node_pnt.distTo(cur_node_pnt);
+                    // here, target set path = n th future = [n-1]
+                    float bearing =  bearingAngle(state.targetSetPath[n-1], newLayer.points[i]);
+                    float desRelDistDeviation = 0;
+                    for (auto pnt : state.targetSetPath[n-1].points){
+                        desRelDistDeviation += pow(pnt.distTo(cur_node_pnt) - tryParam.desShotDist,2);
+                    }
+
+                    // Edge distance violation
+                    LineSegment chaserMoveLine(((cur_node_pnt)),(prev_node_pnt));
+
+                    // Collision with target
+                    LineSegment targetMoveLine;
+                    bool isTargetCollision = false;
+                    for(int m =0 ; m < M ; m++) {
+                        targetMoveLine.p2 = state.targetSetPath[n-1].points[m];
+                        if (n == 1)
+                            targetMoveLine.p1 = state.curTargets.points[m]; // current target position
+                        else
+                            targetMoveLine.p1 = state.targetSetPath[n-2].points[m];
+
+                        if (TC_collision(targetMoveLine,chaserMoveLine) ) {
+                            isTargetCollision = true;
+                            break;
+                        }
+                    }
+                    result.nRejectEdgesTargetCollision += (int) isTargetCollision;
+
+                    if (not isTargetCollision) {
+                        bool isDistanceViolation = dist / float(dt) >  (n > 1 ? tryParam.maxConnectVelocity : 1.3 * tryParam.maxConnectVelocity);
+                        result.nRejectEdgesDistanceAllowable += (int) (isDistanceViolation);
+                        if (not isDistanceViolation) { // maximally connectable ?
+                            // Is End point occluded?
+                            float visScore = state.vsf_path[n - 1].eval(cur_node_pnt);
+                            bool isEndPointOccluded =  visScore < param.occlusionEps;
+                            result.nRejectEndPointOcclusion += (int) (isEndPointOccluded);
+
+                            if (not isEndPointOccluded) {
+                                // Is traverse collision?
+
+                                // Exception handling, we effort to clear the octomap around the chaser
+                                Point collisionRayStart;
+                                if (n == 1){
+                                    Point dir = (cur_node_pnt - prev_node_pnt) /  (cur_node_pnt - prev_node_pnt).norm();
+                                    collisionRayStart = prev_node_pnt + dir * tryParam.seedClearRad;
+                                }else
+                                    collisionRayStart = prev_node_pnt;
+
+                                bool isEdgeCollision = collisionRay(state.edtServerPtr, collisionRayStart, cur_node_pnt,tryParam.collisionRayStride,
+                                                                    tryParam.collisionEps);
+                                result.nRejectEdgesTraverseObstacleCollision+= (int) isEdgeCollision;
+
+                                if (not isEdgeCollision) {
+                                    bool isBearingViolated = bearing > tryParam.maxBearing;
+                                    result.nRejectEndPointBearingViolation += (int) isBearingViolated;
+                                    if (not isBearingViolated) {
+                                        // 1. register node
+                                        if (not register_mask(i)) { // if not previously registered
+                                            chaserGraph.nodes.coeffRef(2,node_insert_idx) = cur_node_pnt.x;
+                                            chaserGraph.nodes.coeffRef(3,node_insert_idx) = cur_node_pnt.y;
+                                            chaserGraph.nodes.coeffRef(4,node_insert_idx) = cur_node_pnt.z;
+                                            chaserGraph.nodes(0, node_insert_idx) = n;
+                                            chaserGraph.nodes(1, node_insert_idx) = i;
+                                            node_insert_idx++;
+                                            N_cur_layer_pnt++;
+                                            register_mask(i) = 1;
+                                        }
+                                        // 2. connect edge
+                                        chaserGraph.edges(0, edge_insert_idx) = n;
+                                        chaserGraph.edges(1, edge_insert_idx) = prev_node_idx;
+                                        int indexSum = 0;
+                                        for(int ii =0 ; ii < i ; ii++)
+                                            indexSum += register_mask.coeffRef(ii);
+                                        chaserGraph.edges(2, edge_insert_idx) =
+                                                chaserGraph.node_div_location[n] + indexSum;
+
+                                        // 3. weight computation
+                                        Point vel = state.chaserInitVel;
+                                        Point dir = cur_node_pnt-prev_node_pnt;
+                                        float angle = 0 ;
+                                        if (n==1 and (vel.norm() > 0)) { // velocity direction
+                                            angle = dir.angleTo(vel);
+                                        }
+
+                                        chaserGraph.edges(3, edge_insert_idx) =
+                                                tryParam.w_dist * pow(dist,1) + tryParam.w_visibility * 1/(visScore) +
+                                                tryParam.w_bearing * bearing + tryParam.w_des_rel_dist * desRelDistDeviation +
+                                                tryParam.w_init_vel_dir*angle;
+                                        chaserGraph.edges(4,edge_insert_idx) = dist;
+
+                                        edge_insert_idx++;
+                                        N_cur_layer_edge++;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (N_cur_layer_edge > 0) {
+                result.isSuccess = true;
+                if (n < chaserGraph.N )
+                    chaserGraph.node_div_location[n+1] = chaserGraph.node_div_location[n] + N_cur_layer_pnt;
+                else {
+                    chaserGraph.N_node = chaserGraph.node_div_location[n] + N_cur_layer_pnt;
+                }
+                if (n < chaserGraph.N)
+                    chaserGraph.edge_div_location[n] = chaserGraph.edge_div_location[n-1] + N_cur_layer_edge;
+                else
+                    chaserGraph.N_edge = chaserGraph.edge_div_location[n-1] + N_cur_layer_edge;
+            }
+
+            result.nEdgesFromPrevious = N_cur_layer_edge;
+            result.nFeasibleAndConnectedNodes = N_cur_layer_pnt;
+            return result;
+        }
+
+
+        void Report::push_back(LayerExtensionResult result) {
+
+            nRejectEdgesTargetCollision.push_back(result.nRejectEdgesTargetCollision); //!
+            nRejectEdgesDistanceAllowable.push_back(result.nRejectEdgesDistanceAllowable);
+            nRejectEdgesTraverseObstacleCollision.push_back(result.nRejectEdgesTraverseObstacleCollision);
+            nRejectEndPointOcclusion.push_back(result.nRejectEndPointOcclusion);
+            nRejectEndPointBearingViolation.push_back(result.nRejectEndPointBearingViolation);
+            nEdgesFromPrevious.push_back(result.nEdgesFromPrevious);
+            nFeasibleAndConnectedNodes.push_back(result.nFeasibleAndConnectedNodes);
+            nTriedConnectionNode.push_back(result.nTriedConnectionNode);
+            N++;
+        }
+
+
 
         bool Preplanner::createGraph() {
 
+            /**
+             * Initialize graph
+             */
             Timer tGraphGen;
             Eigen::Vector3f chaserPnt = state.chaserInit.toEigen();
             // get param for graph  ...
@@ -460,34 +645,28 @@ namespace dual_chaser{
             float dt = state.timeKnotLocal[1] - state.timeKnotLocal[0] ; // time interval time knots (uniform assumed)
 
             // initialize graph (e.g. pre-allocation)
-            vector<PointSet> points_path(N);
-            vector<int> n_path(N);
             int nMaxNodes = 1;
             int nMaxEdges = 0;
             int prevMaxNodes = 1;
 
-            // determine candidate points
-            for (int n = 0 ; n < N ; n++){
-                // hollow to determine candidate points
-                vector<EllipsoidNoRot> hollow;
-                for (int m =0; m < M ; m++){
-                    hollow.emplace_back(state.futureTargetPoints[m].traj.points[n].toEigen().cast<double>(),
-                                        param.TC_ellipsoidScaleCollisionStep);
-                }
-                hollow.emplace_back(state.targetSetPath[n].center().toEigen().cast<double>(),
-                                    param.TC_ellipsoidScaleCollisionStep);
 
-                // fill points and scores from vsf
-                state.vsf_path[n].getPnt(param.graphNodeStride,hollow,points_path[n]);
-                n_path[n] = points_path[n].points.size();
-                nMaxNodes += n_path[n];
+            // determine candidate points
+            vector<vector<EllipsoidNoRot>> hollowPath;
+            for (int n = 0 ; n < N ; n++){
+                nMaxNodes += state.vsf_path[n].size();
                 nMaxEdges += prevMaxNodes*nMaxNodes;
                 prevMaxNodes = nMaxNodes;
+
+                vector<EllipsoidNoRot> hollow; // region to be removed
+                for (int m =0; m < M ; m++)
+                    hollow.emplace_back(state.futureTargetPoints[m].traj.points[n].toEigen().cast<double>(),
+                                        param.TC_ellipsoidScaleCollisionStep);
+                hollow.emplace_back(state.targetSetPath[n].center().toEigen().cast<double>(),
+                                    param.TC_ellipsoidScaleCollisionStep);
+                hollowPath.push_back(hollow);
             }
 
-            // initialize graph analyzer
             reporter.init();
-
             bool isGraphConnect = true;
             ChaserGraph chaserGraph;
             chaserGraph.edges = Eigen::MatrixXf(5,nMaxEdges);
@@ -496,196 +675,52 @@ namespace dual_chaser{
             chaserGraph.node_div_location = new int[N+1]; chaserGraph.node_div_location[0] = 0; chaserGraph.node_div_location[1] = 1;
             chaserGraph.N = N;
 
-            // fill the first element (current chaser)
+            // fill the seed element (current chaser location)
             int N_cur_layer_pnt = 1; int N_cur_layer_edge = 0;
             int node_insert_idx = 0; int edge_insert_idx = 0;
-
             chaserGraph.nodes(0,node_insert_idx) = chaserGraph.nodes(1,node_insert_idx)  = 0; // t/n
             chaserGraph.nodes.block(2,node_insert_idx,3,1) = chaserPnt; // point (x,y,z)
             chaserGraph.node_div_location[1] =chaserGraph.node_div_location[0] + N_cur_layer_pnt;
             node_insert_idx++;
 
-            Point prev_node_pnt,cur_node_pnt;
+            /**
+             * Extend graph layer for step
+             */
+            const int nTrialPerStep = 3;
+            for (int n = 1 ; n <= N ; n++){ // index = future step
+                PointSet candidateNodes;
+                state.vsf_path[n-1].getPnt(param.graphNodeStride ,hollowPath[n-1],candidateNodes);
+                LayerExtensionResult extResult = extendLayer(chaserGraph,n,candidateNodes,param,
+                                                             node_insert_idx,edge_insert_idx);
 
-            float avgCostDist =0 ;
-            float avgCostVis =0 ;
-            float avgCostBearing =0 ;
-            float avgCostRelDist =0 ;
-            float avgCostDir =0 ;
-
-            for (int n = 1 ; n <= N ; n++){
-
-                int nNodes = points_path[n-1].size();
-                N_cur_layer_pnt = 0; // number of registered number of at this time step
-                N_cur_layer_edge = 0; // number of in edge to this layer
-                Eigen::VectorXi register_mask(nNodes); register_mask.setZero();
-
-                // order of rejection process important
-                reporter.nRejectEdgesTargetCollision.push_back(0);
-                reporter.nRejectEdgesDistanceAllowable.push_back(0);
-                reporter.nRejectEndPointOcclusion.push_back(0);
-                reporter.nRejectEdgesTraverseObstacleCollision.push_back(0);
-                reporter.nRejectEndPointBearingViolation.push_back(0);
-                reporter.nTriedConnectionNode.push_back(nNodes) ;
-
-                for (int i = 0 ; i < nNodes ; i++ ){ // index in current layer
-                    for(int prev_node_idx = chaserGraph.node_div_location[n-1] ; prev_node_idx != chaserGraph.node_div_location[n];prev_node_idx++){
-                        prev_node_pnt = Point(chaserGraph.nodes.block(2,prev_node_idx,3,1));
-                        cur_node_pnt = points_path[n-1].points[i];
-
-                        // Cost
-                        float dist = prev_node_pnt.distTo(cur_node_pnt);
-                        float bearing =  bearingAngle(state.targetSetPath[n-1],points_path[n-1].points[i]);
-                        float desRelDistDeviation = 0;
-
-                        for (auto pnt : state.targetSetPath[n-1].points){
-                            desRelDistDeviation += pow(pnt.distTo(points_path[n-1].points[i]) - param.desShotDist,2);
-                        }
-
-                        // Edge distance violation
-                        LineSegment chaserMoveLine(((cur_node_pnt)),(prev_node_pnt));
-
-                        // Collision with target
-                        LineSegment targetMoveLine;
-                        bool isTargetCollision = false;
-                        for(int m =0 ; m < M ; m++) {
-                            targetMoveLine.p2 = state.targetSetPath[n-1].points[m];
-                            if (n == 1)
-                                targetMoveLine.p1 = state.curTargets.points[m]; // current target position
-                            else
-                                targetMoveLine.p1 = state.targetSetPath[n-2].points[m];
-
-                            if (TC_collision(targetMoveLine,chaserMoveLine) ) {
-                                isTargetCollision = true;
-                                break;
-                            }
-                        }
-
-                        reporter.nRejectEdgesTargetCollision.back() += (int) isTargetCollision;
-
-                        if (not isTargetCollision) { // did collide with target ?
-                            bool isDistanceViolation = dist / float(dt) >  (n > 1 ?  param.maxConnectVelocity : 1.3 *param.maxConnectVelocity);
-                            reporter.nRejectEdgesDistanceAllowable.back() += (int) (isDistanceViolation);
-                            if (not isDistanceViolation) { // maximally connectable ?
-
-                                // Is End point occluded?
-                                float visScore = state.vsf_path[n - 1].eval(points_path[n - 1].points[i]);
-                                bool isEndPointOccluded =  visScore < param.occlusionEps;
-                                reporter.nRejectEndPointOcclusion.back() += (int) (isEndPointOccluded);
-
-                                if (not isEndPointOccluded) { // TODO unknown cell?
-                                    // Is traverse collision?
-
-                                    // Exception handling, we effort to clear the octomap around the chaser
-                                    Point collisionRayStart;
-                                    if (n == 1){
-                                        Point dir = (cur_node_pnt - prev_node_pnt) /  (cur_node_pnt - prev_node_pnt).norm();
-                                        collisionRayStart = prev_node_pnt + dir * param.seedClearRad;
-                                    }else
-                                        collisionRayStart = prev_node_pnt;
-
-                                    bool isEdgeCollision = collisionRay(state.edtServerPtr, collisionRayStart, cur_node_pnt, param.collisionRayStride,
-                                                                        param.collisionEps);
-                                    reporter.nRejectEdgesTraverseObstacleCollision.back()+= (int) isEdgeCollision;
-
-                                    if (not isEdgeCollision) {
-                                        bool isBearingViolated = bearing > param.maxBearing;
-                                        reporter.nRejectEndPointBearingViolation.back() += (int) isBearingViolated;
-
-                                        if (not isBearingViolated) {
-                                            // 1. register node
-                                            if (not register_mask(i)) {
-                                                chaserGraph.nodes.coeffRef(2,node_insert_idx) = cur_node_pnt.x;
-                                                chaserGraph.nodes.coeffRef(3,node_insert_idx) = cur_node_pnt.y;
-                                                chaserGraph.nodes.coeffRef(4,node_insert_idx) = cur_node_pnt.z;
-                                                chaserGraph.nodes(0, node_insert_idx) = n;
-                                                chaserGraph.nodes(1, node_insert_idx) = i;
-                                                node_insert_idx++;
-                                                N_cur_layer_pnt++;
-                                                register_mask(i) = 1;
-                                            }
-                                            // 2. connect edge
-                                            chaserGraph.edges(0, edge_insert_idx) = n;
-                                            chaserGraph.edges(1, edge_insert_idx) = prev_node_idx;
-                                            int indexSum = 0;
-                                            for(int ii =0 ; ii < i ; ii++)
-                                                indexSum += register_mask.coeffRef(ii);
-                                            chaserGraph.edges(2, edge_insert_idx) =
-                                                    chaserGraph.node_div_location[n] + indexSum;
-
-                                            // 3. weight computation
-                                            Point vel =state.chaserInitVel;
-                                            Point dir = cur_node_pnt-prev_node_pnt;
-                                            float angle = 0 ;
-                                            if (n==1 and (vel.norm() > 0)) { // veloicty direction
-                                                angle = dir.angleTo(vel);
-                                            }
-
-                                            chaserGraph.edges(3, edge_insert_idx) =
-                                                    param.w_dist * pow(dist,1) + param.w_visibility * 1/(visScore) +
-                                                    param.w_bearing * bearing + param.w_des_rel_dist * desRelDistDeviation + param.w_init_vel_dir*angle;
-                                            chaserGraph.edges(4,edge_insert_idx) = dist;
-
-                                            edge_insert_idx++;
-                                            N_cur_layer_edge++;
-
-                                            avgCostDist += dist;
-                                            avgCostVis += 1/visScore;
-                                            avgCostBearing += bearing;
-                                            avgCostRelDist += desRelDistDeviation;
-                                            avgCostDir += angle;
-                                            if (dist > param.maxConnectVelocity)
-                                                ROS_WARN("something wrong!");
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-
-
-                reporter.nEdgesFromPrevious.push_back(N_cur_layer_edge);
-                reporter.nFeasibleAndConnectedNodes.push_back(N_cur_layer_pnt);
-
-                if (N_cur_layer_edge == 0){
-                    cout << "Preplanner: " <<": Layer was not connected from " << n-1 << " to " << n << ". Aborting preplanning."<<endl;
+                reporter.push_back(extResult);
+                if (not extResult.isSuccess){
+                    ROS_WARN_STREAM("Preplanner: " <<": Layer was not connected from " << n-1 << " to " << n << ". Aborting preplanning.");
                     isGraphConnect = false;
                     break;
                 }
-                reporter.N++; // the step until graph is connected
-                if (n < N )
-                    chaserGraph.node_div_location[n+1] = chaserGraph.node_div_location[n] + N_cur_layer_pnt;
-                else {
-                    chaserGraph.N_node = chaserGraph.node_div_location[n] + N_cur_layer_pnt;
-                }
-                if (n < N)
-                    chaserGraph.edge_div_location[n] = chaserGraph.edge_div_location[n-1] + N_cur_layer_edge;
-                else
-                    chaserGraph.N_edge = chaserGraph.edge_div_location[n-1] + N_cur_layer_edge;
-
-                reporter.avgCostDist = avgCostRelDist/edge_insert_idx;
-                reporter.avgCostVis=avgCostVis/edge_insert_idx;
-                reporter.avgCostBearing = avgCostBearing/edge_insert_idx;
-                reporter.avgCostRelDist = avgCostRelDist/edge_insert_idx;
-                reporter.avgCostDir = avgCostDir/edge_insert_idx;
             }
 
-
+            /**
+             * Update state and vis
+             */
             mutex_.lock();
             visSet.candidateNodesPath.clear();
-            reporter.elapseConstruction = tGraphGen.stop();
             state.curGraph = chaserGraph;
+            reporter.elapseConstruction = tGraphGen.stop();
             visSet.candidateNodesPath = chaserGraph.getPCLPath(param.worldFrameId,reporter.N);
-            reporter.report(); // report current graph connection status
             state.graphConstructionSuccess = isGraphConnect;
             mutex_.unlock();
+            reporter.report(); // report current graph connection status
             return isGraphConnect;
         }
 
         bool Preplanner::solveGraph() {
+
+            Timer timer;
             state.graphSolveSuccess = state.curGraph.solve();
+            double elapse = timer.stop();
+            reporter.elapseSolve = elapse;
 
             // output upload
             mutex_.lock();

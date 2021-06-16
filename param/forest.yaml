@@ -7,7 +7,7 @@ history_collect_interval: 0.2 # [s]
 only_preplan: false # true : only preplan, at initial state =  drone state
 preplanner:
   seed_obst_clear_rad: 0.6 # clearing radius for remove initial planning point for preplanner
-  n_max_step: 3 # maximum number of discretiazation over horizon
+  n_max_step: 4 # maximum number of discretiazation over horizon
   edf_max_dist: 2.0 # max distance to be calculated in euclidean distance field
   max_bearing: 1.25 # max distance to be calculated in euclidean distance field
   des_dist: 2.5 # desired relative distance to target

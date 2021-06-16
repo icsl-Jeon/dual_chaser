@@ -96,7 +96,6 @@ namespace dual_chaser {
         int Nx,Ny,Nz;
         float *** data = NULL;
 
-
         ind3 pnt2ind(Point pnt) const ;
         Point ind2pnt(ind3 ind) const;
 
@@ -120,9 +119,12 @@ namespace dual_chaser {
         void getPntAndValue (int nStride,PointSet& pnts,vector<float>& vals);
         void getPnt (int nStride,PointSet& pnts);
         void getPnt (int nStride,const vector<EllipsoidNoRot>& hollowing,PointSet& pnts);
+        void getPnt (int stride, float lengthMin[3] , float lengthMax[3],const vector<EllipsoidNoRot>& hollowing ,  PointSet& pnts);
         float eval(Point pnt) const {
             return eval(pnt2ind(pnt));
         }
+        int size() const {return Nx*Ny*Nz;};
+        void getLengths(float& lx, float& ly, float& lz) const {lx = fieldParam.lx , ly = fieldParam.ly ; lz = fieldParam.lz; }
         virtual ~ScoreFieldBase();
     };
 

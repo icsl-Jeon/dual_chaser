@@ -6,6 +6,8 @@ Panels:
       Expanded:
         - /Status1
         - /Octomap1
+        - /VisibilityMap1
+        - /Graph1
         - /Graph1/TargetPath11/Offset1
         - /Graph1/PreplanningBearing1/Namespaces1
         - /SmoothTraj1
@@ -80,7 +82,7 @@ Visualization Manager:
           Color: 196; 160; 0
           Color Transformer: Intensity
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: true
           Max Color: 238; 238; 236
           Min Color: 0; 0; 0
@@ -95,7 +97,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: false
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -108,7 +110,7 @@ Visualization Manager:
           Color: 60; 61; 59
           Color Transformer: Intensity
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: true
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -123,7 +125,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: false
-          Value: false
+          Value: true
       Enabled: true
       Name: Octomap
     - Class: rviz/Group
@@ -664,6 +666,8 @@ Visualization Manager:
           Value: false
         object_1:
           Value: false
+        object_2:
+          Value: true
         odom:
           Value: false
         target_0_filtered:
@@ -710,6 +714,8 @@ Visualization Manager:
             {}
           object_1:
             {}
+          object_2:
+            {}
           odom:
             base_link:
               zed2_camera_center:
@@ -752,7 +758,7 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Class: rviz/Image
-      Enabled: false
+      Enabled: true
       Image Topic: /zed_client_node/image_rect_color_masked
       Max Value: 1
       Median window: 5
@@ -762,7 +768,7 @@ Visualization Manager:
       Queue Size: 2
       Transport Hint: raw
       Unreliable: false
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /dual_chaser/wrapper/target_0/bearing
@@ -867,7 +873,7 @@ Visualization Manager:
       Unreliable: false
       Value: false
     - Class: rviz/Image
-      Enabled: true
+      Enabled: false
       Image Topic: /zed_client_node/image_rect_color_masked
       Max Value: 1
       Median window: 5
@@ -877,7 +883,7 @@ Visualization Manager:
       Queue Size: 2
       Transport Hint: raw
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -962,7 +968,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 15.435728073120117
+      Distance: 28.73180389404297
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -970,17 +976,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.8819741010665894
-        Y: -0.32217979431152344
-        Z: 4.7723486204631627e-05
+        X: 17.26305389404297
+        Y: 8.124225616455078
+        Z: 3.7817793781869113e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6747968196868896
+      Pitch: 0.44479674100875854
       Target Frame: desired_pose
-      Yaw: 3.7286794185638428
+      Yaw: 5.880037307739258
     Saved: ~
 Window Geometry:
   Displays:

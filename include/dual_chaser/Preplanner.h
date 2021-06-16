@@ -26,6 +26,7 @@ namespace dual_chaser{
 
             // vsf construction
             Eigen::Vector3d ellipsoidScaleOcclusion; // ellipsoid model for targets of interest (for inter occlusion)
+            float xyPaddingRatio = 0.7; // margin * ( 1+ paddingRatio) = vsf sizing
             float margin_xy = 4.0;
             float margin_z_up = 2.0;
             float margin_z_down = 2.0;
@@ -74,24 +75,32 @@ namespace dual_chaser{
 
         };
 
+        struct LayerExtensionResult{
+            bool isSuccess = false;
+
+            int nRejectEdgesTargetCollision =0;
+            int nRejectEdgesDistanceAllowable =0;
+            int nRejectEdgesTraverseObstacleCollision =0;
+            int nRejectEndPointOcclusion =0;
+            int nRejectEndPointBearingViolation=0;
+            int nEdgesFromPrevious=0;
+            int nFeasibleAndConnectedNodes=0;
+            int nTriedConnectionNode=0;
+        };
+
 
         struct Report{
-            int N; // number of connected time step
+            int N = 0 ; // number of connected time step
             vector<int> nRejectEdgesTargetCollision; //!
             vector<int> nRejectEdgesDistanceAllowable;
             vector<int> nRejectEdgesTraverseObstacleCollision;
             vector<int> nRejectEndPointOcclusion;
             vector<int> nRejectEndPointBearingViolation;
-
             vector<int> nEdgesFromPrevious;
             vector<int> nFeasibleAndConnectedNodes;
             vector<int> nTriedConnectionNode;
 
-            float avgCostDist;
-            float avgCostVis;
-            float avgCostBearing;
-            float avgCostRelDist;
-            float avgCostDir;
+            void push_back(LayerExtensionResult result);
 
             double elapseConstruction;
             double elapseSolve;
@@ -112,7 +121,6 @@ namespace dual_chaser{
         };
 
         class Preplanner {
-
 
             struct PublisherSet {
                 ros::Publisher targetCollisionVolume;
@@ -150,7 +158,6 @@ namespace dual_chaser{
                 ros::Time tLastTrigger;
                 vector<float> timeKnotLocal; /// 0 is included
 
-
                 // Flag
                 bool isInitSession = false;
                 bool vsfSuccess = false;
@@ -180,7 +187,9 @@ namespace dual_chaser{
             // MISC UTILS
             bool TC_collision (const LineSegment& targetMove,
                                const LineSegment& chaserMove) const;
-            bool extendLayer(ChaserGraph& chaserGraph, const PointSet& newLayer, Param tryParam);
+            LayerExtensionResult extendLayer(ChaserGraph& chaserGraph, int n,
+                                             const PointSet& newLayer, Param tryParam,
+                                             int& node_insert_idx,int& edge_insert_idx);
 
             // SUB ROUTINES
             bool createVsfPath();

@@ -56,7 +56,7 @@ namespace dual_chaser{
         param.mode = isPreplanMode  ? PLANNING_LEVEL::PRE_PLANNING :  PLANNING_LEVEL::SMOOTH_PLANNING;
 
         nhPrivate.param("horizon",param.horizon,1.0f);
-        nhPrivate.param("desired_position_smoothing",param.planPoseSmoothing,0.8f);
+        nhPrivate.param("desired_position_smoothing",param.planPoseSmoothing,0.0f);
         nhPrivate.param("history_collect_interval",param.historyCollectInterval,0.1f);
         state.horizon = param.horizon;
         nhPrivate.param<string>("frame_id",param.worldFrameId,"/map");
@@ -365,6 +365,7 @@ namespace dual_chaser{
         if (isPlan){
             // E/H horizon check
             float tEval = (curTime - curPlan.droneTrajectory.refTime).toSec();
+            ROS_INFO("intial planning eval time: %f" ,tEval );
             if (tEval > horizon)
                 ROS_WARN("Wrapper: eval on planning exceed horizon. Clamping time! ");
             tEval = min (tEval , horizon);

@@ -12,7 +12,6 @@ Panels:
         - /SmoothTraj1
         - /SmoothTraj1/CORRIDOR1
         - /SmoothTraj1/CORRIDOR1/Namespaces1
-        - /TF1
         - /TF1/Frames1
         - /TF1/Tree1
       Splitter Ratio: 0.5720221400260925
@@ -664,15 +663,15 @@ Visualization Manager:
         map:
           Value: false
         object_0:
-          Value: true
-        object_1:
-          Value: true
+          Value: false
+        object_3:
+          Value: false
         odom:
           Value: false
         target_0_filtered:
-          Value: false
+          Value: true
         target_1_filtered:
-          Value: false
+          Value: true
         zed2_baro_link:
           Value: false
         zed2_camera_center:
@@ -711,7 +710,7 @@ Visualization Manager:
             {}
           object_0:
             {}
-          object_1:
+          object_3:
             {}
           odom:
             base_link:
@@ -766,6 +765,54 @@ Visualization Manager:
       Transport Hint: raw
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 252; 233; 79
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Billboards
+      Line Width: 0.10000000149011612
+      Name: PREDICTION1
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Queue Size: 10
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /dual_chaser/target_1/prediction
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 252; 233; 79
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Billboards
+      Line Width: 0.10000000149011612
+      Name: PREDICTION0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Queue Size: 10
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /dual_chaser/target_0/prediction
+      Unreliable: false
+      Value: true
     - Class: rviz/MarkerArray
       Enabled: false
       Marker Topic: /dual_chaser/wrapper/target_0/bearing
@@ -806,54 +853,6 @@ Visualization Manager:
       Topic: /multi_chaser/smooth_planner/plan_traj
       Unreliable: false
       Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 25; 255; 0
-      Enabled: false
-      Head Diameter: 0.30000001192092896
-      Head Length: 0.20000000298023224
-      Length: 0.30000001192092896
-      Line Style: Billboards
-      Line Width: 0.10000000149011612
-      Name: PREDICTION0
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Queue Size: 10
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.10000000149011612
-      Shaft Length: 0.10000000149011612
-      Topic: /dual_chaser/target_0/prediction
-      Unreliable: false
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 25; 255; 0
-      Enabled: false
-      Head Diameter: 0.30000001192092896
-      Head Length: 0.20000000298023224
-      Length: 0.30000001192092896
-      Line Style: Billboards
-      Line Width: 0.10000000149011612
-      Name: PREDICTION1
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Queue Size: 10
-      Radius: 0.029999999329447746
-      Shaft Diameter: 0.10000000149011612
-      Shaft Length: 0.10000000149011612
-      Topic: /dual_chaser/target_1/prediction
-      Unreliable: false
-      Value: false
     - Alpha: 1
       Angular Arrow Scale: 2
       Angular Color: 204; 204; 51
@@ -965,7 +964,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 18.99262046813965
+      Distance: 4.359062194824219
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -973,17 +972,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -2.338557004928589
-        Y: 1.4290945529937744
-        Z: 3.7817793781869113e-05
+        X: -0.690728485584259
+        Y: -0.53409343957901
+        Z: 3.746016591321677e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 1.2797963619232178
       Target Frame: desired_pose
-      Yaw: 2.7500228881835938
+      Yaw: 3.3950307369232178
     Saved: ~
 Window Geometry:
   Displays:

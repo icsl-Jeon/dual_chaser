@@ -2,7 +2,7 @@
 
     <include file="$(find zed2_client)/launch/client.launch">
         <arg name="is_bag" value="true"/>
-        <arg name="bag_file" value="/media/jbs/ssd/bag_zed/outdoor/dual_target/compressed/dual_circling.bag"/>
+        <arg name="bag_file" value="/media/jbs/ssd/bag_zed/outdoor/dual_target/compressed/forest_budlegool.bag"/>
 <!--        <arg name="bag_file" value="/media/jbs/ssd/bag_zed/outdoor/dual_target/compressed/dual_straight.bag"/>-->
         <arg name="run_edt" value="false"/>
         <arg name="rviz" value="false"/>

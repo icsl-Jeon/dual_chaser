@@ -8,10 +8,12 @@ Panels:
         - /Octomap1
         - /Graph1
         - /Graph1/TargetPath11/Offset1
+        - /Graph1/CandidateNode11
         - /Graph1/PreplanningBearing1/Namespaces1
         - /SmoothTraj1
         - /SmoothTraj1/CORRIDOR1
         - /SmoothTraj1/CORRIDOR1/Namespaces1
+        - /TF1
         - /TF1/Frames1
         - /TF1/Tree1
       Splitter Ratio: 0.5720221400260925
@@ -43,13 +45,13 @@ Visualization Manager:
   Class: ""
   Displays:
     - Alpha: 0.30000001192092896
-      Cell Size: 5
+      Cell Size: 1
       Class: rviz/Grid
-      Color: 255; 255; 255
+      Color: 252; 233; 79
       Enabled: true
       Line Style:
         Line Width: 0.029999999329447746
-        Value: Lines
+        Value: Billboards
       Name: Grid
       Normal Cell Count: 0
       Offset:
@@ -394,7 +396,7 @@ Visualization Manager:
           Color: 137; 233; 161
           Color Transformer: FlatColor
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -409,7 +411,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: false
+          Value: true
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -651,7 +653,7 @@ Visualization Manager:
       Frames:
         All Enabled: false
         base_link:
-          Value: false
+          Value: true
         desired_pose:
           Value: true
         drone_link:
@@ -664,8 +666,10 @@ Visualization Manager:
           Value: false
         object_0:
           Value: false
-        object_3:
-          Value: false
+        object_1:
+          Value: true
+        object_2:
+          Value: true
         odom:
           Value: false
         target_0_filtered:
@@ -710,7 +714,9 @@ Visualization Manager:
             {}
           object_0:
             {}
-          object_3:
+          object_1:
+            {}
+          object_2:
             {}
           odom:
             base_link:
@@ -964,7 +970,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 4.359062194824219
+      Distance: 24.068124771118164
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -972,17 +978,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.690728485584259
-        Y: -0.53409343957901
+        X: 1.863708734512329
+        Y: -1.5032354593276978
         Z: 3.746016591321677e-05
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.2797963619232178
+      Pitch: 1.0647962093353271
       Target Frame: desired_pose
-      Yaw: 3.3950307369232178
+      Yaw: 6.20505428314209
     Saved: ~
 Window Geometry:
   Displays:

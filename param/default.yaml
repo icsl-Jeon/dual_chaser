@@ -2,7 +2,7 @@ frame_id: map
 horizon: 2.0 # this horizon should be smaller than target_manager/horizon
 n_target: 2 # number of target
 early_end: 1.0 # horizon - early_end = period
-desired_position_smoothing: 0.9 # [0,1]
+desired_position_smoothing: 0.0 # [0,1]
 history_collect_interval: 0.2 # [s]
 only_preplan: false # true : only preplan, at initial state =  drone state
 preplanner:
@@ -45,7 +45,7 @@ preplanner:
     init_vel_dir: 3.0
 smooth_planner:
   preplan_track_rad: 0.3 # [m] linear inequality to confine deviation from preplanned waypoint (<= occlusion_clearance)
-  poly_order: 5,
+  poly_order: 6,
   length_step: 0.5 # [m] step size to form corridors between waypoints
   weight:
     qp_vel: 0.0,
@@ -67,7 +67,7 @@ visualization:
   edf_volume:
     r: 0.8
     g: 0.8
-    b: 0.
+    b: 0.9
     a: 0.1
   target_collision_volume:
     r: 0.8

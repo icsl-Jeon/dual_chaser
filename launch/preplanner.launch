@@ -19,7 +19,7 @@
         <remap from="cloud_in" to="$(arg point_topic)" />
 
         <!-- Dual chaser -->
-        <rosparam file="$(find dual_chaser)/param/default.yaml" command="load"/>
+        <rosparam file="$(find dual_chaser)/param/straight.yaml" command="load"/>
     </node>
 
 </launch>

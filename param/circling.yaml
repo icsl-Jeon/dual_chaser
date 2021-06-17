@@ -15,11 +15,11 @@ preplanner:
   score_field_max_connect_vel: 2.5 # [m/s] maximum connectable edge length
   score_field_node_stride: 2 # stride to build candidate nodes on scorefield
   score_field_margin: # not necessarily use the whole volume to sample graph nodes
-    xy: 3.3 # extension to +/-xy
+    xy: 4.0 # extension to +/-xy
     z_top: 1.0 # extension to +/-z w.r.t target at each step
-    z_bottom: 0.0 # extension to +/-z w.r.t target at each step
+    z_bottom: 0.5 # extension to +/-z w.r.t target at each step
   collision_clearance: 0.6 # increasing this can sort out unsafe points and can reduce graph build time
-  occlusion_clearance: 0.3
+  occlusion_clearance: 0.5
   target_collision_simple: false # true = simple sphere check / false = ellipsoid checking
   target_collision_sphere_rad: 0.6
   target_collision_ellipse_line:  # when checking line collision with targets move, use this scale for target ellipsoid.
@@ -29,8 +29,8 @@ preplanner:
     z: 2.5
   target_collision_ellipse_step:  # vsf candidate nodes outside of this volume (also inter-ellipse) at each step .
     # make sure r = r_{drone} + r_{human}
-    x: 2.3
-    y: 2.3
+    x: 2.7
+    y: 2.7
     z: 4.0
   target_occlusion_ellipse: # volume to consider inter occlusion (semi-axis length). should not be too big
     x: 0.3

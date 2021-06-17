@@ -1,0 +1,34 @@
+world_frame_id: map
+mask_object:  true # activate target masking for pcl
+additional_pcl: false # receive other pcl
+target_tracking:
+  n_target: 2 # 1 or 2 available
+  height_offset_from_box_center: 0.5 # collect observation with z-offset
+  callback_interval: 0.02 # [s] interval to run callback where target tracking updates
+  smoothing_weight: 0.7 # [0,1], higher = more smoothing of position and color queue
+  queue: 100 # size of color and location of tracked target. intended for visualization and quaternion smoothing
+  min_pts_for_pose_inference: 20 # min number for quaternion averaging for tangential direction (x-forwarding)
+
+target_detection:
+  matching_weight: # used for matching tracked objects ~ detected objects
+    color: 1.0 # hsv [0-255] diff
+    location: 1.0 # [m]
+    velocity: 1.0 # might inaccurate as currently vel is described from camera frame
+  assumption: # accept and reject assumption. order : accept -> reject
+    dist_accept: 1.7
+    color_accept: 100 # dist accept && color accept -> accept
+    color_reject: 255 # if hsv diff is larger than this, reject
+    dist_reject: 2.5 # if dist diff is larger than this, reject
+
+pointcloud:
+  mask_padding_x: 60 # col. pixel padding along x axis of image for masking around bounding box 2d
+  mask_padding_y: 50 # ros. pixel padding along x axis of image for masking around bounding box 2d
+  bounding_box_padding: 0.6 # [m] width and length padding to remove points around bounding box from zed
+  stride: 4 # number of pixel pixel striding (row and col) when make pcl from depth image
+  publish_after_targets_fixed: false # pointcloud is published only after targets tracking is initialized
+  filter_speckle: true # remove speckle (can reduce bleeding)
+  speckle_search_rad: 0.7 # pcl speckle removal parameter
+  speckle_search_neighbors: 20 # minimum number of neighbors to become valid points
+
+
+

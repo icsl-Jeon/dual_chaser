@@ -12,12 +12,12 @@ preplanner:
   max_bearing: 1.25 # max distance to be calculated in euclidean distance field
   des_dist: 2.5 # desired relative distance to target
   score_field_resolution: 0.4 # resolution for visibility fields
-  score_field_max_connect_vel: 2.5 # [m/s] maximum connectable edge length
+  score_field_max_connect_vel: 3.5 # [m/s] maximum connectable edge length
   score_field_node_stride: 2 # stride to build candidate nodes on scorefield
   score_field_margin: # not necessarily use the whole volume to sample graph nodes
-    xy: 3.3 # extension to +/-xy
+    xy: 4.0 # extension to +/-xy
     z_top: 1.0 # extension to +/-z w.r.t target at each step
-    z_bottom: 0.0 # extension to +/-z w.r.t target at each step
+    z_bottom: 0.5 # extension to +/-z w.r.t target at each step
   collision_clearance: 0.6 # increasing this can sort out unsafe points and can reduce graph build time
   occlusion_clearance: 0.3
   target_collision_simple: false # true = simple sphere check / false = ellipsoid checking

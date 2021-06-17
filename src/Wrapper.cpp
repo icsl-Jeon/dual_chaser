@@ -74,9 +74,9 @@ namespace dual_chaser{
         nhPrivate.param("visualization/corridor_color/b",param.corridorColor.b,float(0.8));
         nhPrivate.param("visualization/corridor_color/a",param.corridorColor.a,float(0.7));
 
-        nhPrivate.param("preplanner/target_collision_ellipse/x", param.TC_ellipsoidScaleCollision(0), double(0.4));
-        nhPrivate.param("preplanner/target_collision_ellipse/y", param.TC_ellipsoidScaleCollision(1), double(0.4));
-        nhPrivate.param("preplanner/target_collision_ellipse/z", param.TC_ellipsoidScaleCollision(2), double(0.8));
+        nhPrivate.param("preplanner/target_collision_ellipse_line/x", param.TC_ellipsoidScaleCollision(0), double(0.4));
+        nhPrivate.param("preplanner/target_collision_ellipse_line/y", param.TC_ellipsoidScaleCollision(1), double(0.4));
+        nhPrivate.param("preplanner/target_collision_ellipse_line/z", param.TC_ellipsoidScaleCollision(2), double(0.8));
 
         // Bearing arrow history initialization
 

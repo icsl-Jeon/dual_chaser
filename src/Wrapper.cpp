@@ -365,7 +365,7 @@ namespace dual_chaser{
         if (isPlan){
             // E/H horizon check
             float tEval = (curTime - curPlan.droneTrajectory.refTime).toSec();
-            ROS_INFO("intial planning eval time: %f" ,tEval );
+//            ROS_INFO("intial planning eval time: %f" ,tEval );
             if (tEval > horizon)
                 ROS_WARN("Wrapper: eval on planning exceed horizon. Clamping time! ");
             tEval = min (tEval , horizon);

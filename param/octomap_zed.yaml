@@ -28,7 +28,7 @@ window_bound: {
               max: {
                      x: 10,
                      y: 10,
-                     z: 1
+                     z: 0.3
               },
               min: {
                      x: -10,

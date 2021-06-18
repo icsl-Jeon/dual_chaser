@@ -86,7 +86,36 @@ namespace dual_chaser{
             int nEdgesFromPrevious=0;
             int nFeasibleAndConnectedNodes=0;
             int nTriedConnectionNode=0;
+
+            LayerExtensionResult operator+(const LayerExtensionResult& rhs){
+                LayerExtensionResult extResult = *this;
+                extResult.isSuccess = rhs.isSuccess or extResult.isSuccess;
+                extResult.nEdgesFromPrevious += rhs.nEdgesFromPrevious;
+                extResult.nFeasibleAndConnectedNodes += rhs.nFeasibleAndConnectedNodes;
+                extResult.nTriedConnectionNode += rhs.nTriedConnectionNode;
+
+                extResult.nRejectEndPointBearingViolation += rhs.nRejectEndPointBearingViolation;
+                extResult.nRejectEndPointOcclusion += rhs.nRejectEndPointOcclusion;
+                extResult.nRejectEdgesTraverseObstacleCollision += rhs.nRejectEdgesTraverseObstacleCollision;
+                extResult.nRejectEdgesDistanceAllowable += rhs.nRejectEdgesDistanceAllowable;
+                extResult.nRejectEdgesTargetCollision += rhs.nRejectEdgesTargetCollision;
+
+                return extResult;
+            }
+
         };
+        struct Edge {
+            int u; // node index
+            int v; // may be decided after layer extension
+            float w; // weight
+        };
+
+        struct NodeExtensionResult{
+            int pntIdx; // 0< <= trialPoints.size();
+            int n; // 0<= <=N
+            vector<Edge> connectedEdges;
+        };
+
 
 
         struct Report{
@@ -191,9 +220,15 @@ namespace dual_chaser{
                                              const PointSet& newLayer, Param tryParam,
                                              int& node_insert_idx,int& edge_insert_idx);
 
+            void insertNodes(const Eigen::MatrixXf& previousNodeBlock ,int n ,
+                                    vector<Point> triedPoints, pair<int,int> pntIndexRange , Param tryParam,
+                                    vector<NodeExtensionResult>& nodeExtArr,
+                                    LayerExtensionResult& result);
+
             // SUB ROUTINES
             bool createVsfPath();
             bool createGraph();
+            bool createGraph2();
             bool solveGraph();
 
             // SESSION WRAPPER

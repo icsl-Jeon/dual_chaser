@@ -385,15 +385,15 @@ namespace dual_chaser{
                 return false;
             }
 
-            if ( not  createGraph()) {
-                ROS_ERROR("Preplanner: graph creation failed");
+            if ( not  createGraph2()) {
+                ROS_ERROR("Preplanner: graph planning failed");
                 return false;
             }
 
-            if ( not solveGraph()){
-                ROS_ERROR("Preplanner: graph solve failed");
-                return false;
-            }
+//            if ( not solveGraph()){
+//                ROS_ERROR("Preplanner: graph solve failed");
+//                return false;
+//            }
 
             return true;
         }
@@ -460,6 +460,125 @@ namespace dual_chaser{
                 ROS_DEBUG("Preplanner: publish locked by plan thread");
         }
 
+
+        void Preplanner::insertNodes(const MatrixXf & previousNodeBlock, int n ,
+                                        vector<Point> triedPoints,pair<int,int> pntIndexRange,
+                                        Param tryParam,
+                                         vector<NodeExtensionResult>& nodeExtArr,
+                                         LayerExtensionResult& resultOut) {
+            Timer timer;
+            LayerExtensionResult result;
+            result.nTriedConnectionNode = triedPoints.size();
+
+            int nPreviousNodes = previousNodeBlock.cols();
+            nodeExtArr.clear();
+
+            float dt = state.timeKnotLocal[1] - state.timeKnotLocal[0] ; // time interval time knots (uniform assumed)
+            int M = param.nTarget;
+            Point prev_node_pnt,cur_node_pnt;
+
+            int nNodes = triedPoints.size();
+
+            for (int i = 0 ; i < nNodes ; i++ ){ // index in current point set
+                NodeExtensionResult nodeExt;
+                nodeExt.pntIdx = pntIndexRange.first+i;
+                nodeExt.n = n;
+
+                for(int prev_node_idx = 0 ; prev_node_idx < nPreviousNodes; prev_node_idx++){
+                    prev_node_pnt = Point(previousNodeBlock.block(2,prev_node_idx,3,1));
+                    cur_node_pnt = triedPoints[i];
+
+                    // Cost
+                    float dist = prev_node_pnt.distTo(cur_node_pnt);
+                    // here, target set path = n th future = [n-1]
+                    float bearing =  bearingAngle(state.targetSetPath[n-1], triedPoints[i]);
+                    float desRelDistDeviation = 0;
+                    for (auto pnt : state.targetSetPath[n-1].points){
+                        desRelDistDeviation += pow(pnt.distTo(cur_node_pnt) - tryParam.desShotDist,2);
+                    }
+
+                    // Edge distance violation
+                    LineSegment chaserMoveLine(((cur_node_pnt)),(prev_node_pnt));
+
+                    // Collision with target
+                    LineSegment targetMoveLine;
+                    bool isTargetCollision = false;
+                    for(int m =0 ; m < M ; m++) {
+                        targetMoveLine.p2 = state.targetSetPath[n-1].points[m];
+                        if (n == 1)
+                            targetMoveLine.p1 = state.curTargets.points[m]; // current target position
+                        else
+                            targetMoveLine.p1 = state.targetSetPath[n-2].points[m];
+
+                        if (TC_collision(targetMoveLine,chaserMoveLine) ) {
+                            isTargetCollision = true;
+                            break;
+                        }
+                    }
+
+                    if (not isTargetCollision) {
+                        bool isDistanceViolation = dist / float(dt) >  (n > 1 ? tryParam.maxConnectVelocity : 1.3 * tryParam.maxConnectVelocity);
+                        if (not isDistanceViolation) { // maximally connectable ?
+                            // Is End point occluded?
+                            float visScore = state.vsf_path[n - 1].eval(cur_node_pnt);
+                            bool isEndPointOccluded =  visScore < param.occlusionEps;
+                            result.nRejectEndPointOcclusion += (int) (isEndPointOccluded);
+
+                            if (not isEndPointOccluded) {
+                                // Is traverse collision?
+
+                                // Exception handling, we effort to clear the octomap around the chaser
+                                Point collisionRayStart;
+                                if (n == 1){
+                                    Point dir = (cur_node_pnt - prev_node_pnt) /  (cur_node_pnt - prev_node_pnt).norm();
+                                    collisionRayStart = prev_node_pnt + dir * tryParam.seedClearRad;
+                                }else
+                                    collisionRayStart = prev_node_pnt;
+
+                                bool isEdgeCollision = collisionRay(state.edtServerPtr, collisionRayStart, cur_node_pnt,tryParam.collisionRayStride,
+                                                                    tryParam.collisionEps);
+                                result.nRejectEdgesTraverseObstacleCollision+= (int) isEdgeCollision;
+
+                                if (not isEdgeCollision) {
+                                    bool isBearingViolated = bearing > tryParam.maxBearing;
+                                    result.nRejectEndPointBearingViolation += (int) isBearingViolated;
+                                    if (not isBearingViolated) {
+
+                                        // register edge
+                                        Edge edge;
+                                        edge.u = previousNodeBlock(5,prev_node_idx);
+
+                                        // 3. weight computation
+                                        Point vel = state.chaserInitVel;
+                                        Point dir = cur_node_pnt-prev_node_pnt;
+                                        float angle = 0 ;
+                                        if (n==1 and (vel.norm() > 0)) { // velocity direction
+                                            angle = dir.angleTo(vel);
+                                        }
+                                        edge.w = tryParam.w_dist * pow(dist,1) + tryParam.w_visibility * 1/(visScore) +
+                                                tryParam.w_bearing * bearing + tryParam.w_des_rel_dist * desRelDistDeviation +
+                                                tryParam.w_init_vel_dir*angle;
+                                        nodeExt.connectedEdges.push_back(edge);
+                                        result.nEdgesFromPrevious++;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // if this node has connection, + node
+                if (not nodeExt.connectedEdges.empty()) {
+                    nodeExtArr.push_back(nodeExt);
+                    result.nFeasibleAndConnectedNodes++;
+                }
+            }
+            result.isSuccess = result.nEdgesFromPrevious > 0;
+            resultOut = result;
+            ROS_INFO("inner loop took %f",timer.stop());
+        }
+
+
         /**
          * Extend point layer and register feasible points to graph
          * @param chaserGraph
@@ -474,7 +593,6 @@ namespace dual_chaser{
                                      const PointSet &newLayer, Param tryParam,
                                      int& node_insert_idx, int& edge_insert_idx) {
             LayerExtensionResult result;
-
             float dt = state.timeKnotLocal[1] - state.timeKnotLocal[0] ; // time interval time knots (uniform assumed)
             int M = param.nTarget;
             Point prev_node_pnt,cur_node_pnt;
@@ -598,19 +716,6 @@ namespace dual_chaser{
                 }
             }
 
-            if (N_cur_layer_edge > 0) {
-                result.isSuccess = true;
-                if (n < chaserGraph.N )
-                    chaserGraph.node_div_location[n+1] = chaserGraph.node_div_location[n] + N_cur_layer_pnt;
-                else {
-                    chaserGraph.N_node = chaserGraph.node_div_location[n] + N_cur_layer_pnt;
-                }
-                if (n < chaserGraph.N)
-                    chaserGraph.edge_div_location[n] = chaserGraph.edge_div_location[n-1] + N_cur_layer_edge;
-                else
-                    chaserGraph.N_edge = chaserGraph.edge_div_location[n-1] + N_cur_layer_edge;
-            }
-
             result.nEdgesFromPrevious = N_cur_layer_edge;
             result.nFeasibleAndConnectedNodes = N_cur_layer_pnt;
             return result;
@@ -631,6 +736,216 @@ namespace dual_chaser{
         }
 
 
+        bool Preplanner::createGraph2() {
+            /**
+             * Initialize graph
+             */
+            Eigen::Vector3f chaserPnt = state.chaserInit.toEigen();
+            // get param for graph  ...
+            int N = state.nLastQueryStep;  // future step
+            int M = param.nTarget; // target number
+
+            // initialize graph (e.g. pre-allocation)
+            int nMaxNodes = 1;
+            int nMaxEdges = 0;
+            int prevMaxNodes = 1;
+
+
+            // determine candidate points
+            vector<vector<EllipsoidNoRot>> hollowPath;
+            for (int n = 0 ; n < N ; n++){
+                nMaxNodes += state.vsf_path[n].size();
+                nMaxEdges += prevMaxNodes*nMaxNodes;
+                prevMaxNodes = nMaxNodes;
+
+                vector<EllipsoidNoRot> hollow; // region to be removed
+                for (int m =0; m < M ; m++)
+                    hollow.emplace_back(state.futureTargetPoints[m].traj.points[n].toEigen().cast<double>(),
+                                        param.TC_ellipsoidScaleCollisionStep);
+                hollow.emplace_back(state.targetSetPath[n].center().toEigen().cast<double>(),
+                                    param.TC_ellipsoidScaleCollisionStep);
+                hollowPath.push_back(hollow);
+            }
+
+            Timer tGraphGen;
+            reporter.init();
+            bool isGraphConnect = true;
+            ChaserGraph chaserGraph;
+            chaserGraph.edges = Eigen::MatrixXf(5,nMaxEdges);
+            chaserGraph.nodes = Eigen::MatrixXf(6,nMaxNodes);
+            chaserGraph.edge_div_location = new int[N]; chaserGraph.edge_div_location[0] = 0;
+            chaserGraph.node_div_location = new int[N+1]; chaserGraph.node_div_location[0] = 0; chaserGraph.node_div_location[1] = 1;
+            chaserGraph.N = N;
+
+            // fill the seed element (current chaser location)
+            int N_cur_layer_pnt = 1; int N_cur_layer_edge = 0;
+            int node_insert_idx = 0; int edge_insert_idx = 0;
+
+            chaserGraph.nodes(5,node_insert_idx) = 0; // node index
+            chaserGraph.nodes(0,node_insert_idx) = chaserGraph.nodes(1,node_insert_idx)  = 0; // t/n
+            chaserGraph.nodes.block(2,node_insert_idx,3,1) = chaserPnt; // point (x,y,z)
+            chaserGraph.node_div_location[1] = chaserGraph.node_div_location[0] + N_cur_layer_pnt;
+            node_insert_idx++;
+
+            for (int n = 1 ; n <= N ; n++) { // index = future step
+                // point sample
+                PointSet candidateNodes;
+                state.vsf_path[n-1].getPnt(param.graphNodeStride ,hollowPath[n-1],candidateNodes);
+
+
+                int nThread = 4;
+                int nTotalPoint = candidateNodes.points.size();
+                vector<std::thread> workerThread;
+                vector<vector<NodeExtensionResult>> nodeExtArrSet(nThread);
+                vector<LayerExtensionResult> extResultSet(nThread);
+                int increment =ceil(nTotalPoint/float(nThread));
+                int startIdx = 0;
+                float spawnTime = 0;
+                for (int threadIdx = 0; threadIdx < nThread ; threadIdx++){
+                    Timer timerSmall;
+                    int endIdx = min(startIdx + increment,nTotalPoint);
+                    vector<Point> pntSet(candidateNodes.points.begin()+startIdx,
+                                         candidateNodes.points.begin()+endIdx);
+                    pair<int,int> pntIndexRange = make_pair(startIdx,endIdx);
+                    startIdx = endIdx;
+                    workerThread.emplace_back(std::thread(&Preplanner::insertNodes,this,
+                                                          chaserGraph.nodes.block(
+                                                                  0,chaserGraph.node_div_location[n-1],6, chaserGraph.node_div_location[n]-chaserGraph.node_div_location[n-1]),
+                                                              n,pntSet,pntIndexRange,param,
+                                                              std::ref(nodeExtArrSet[threadIdx]),std::ref(extResultSet[threadIdx])));
+                    spawnTime += timerSmall.stop();
+                }
+                ROS_INFO("spawn time = %f",spawnTime);
+                Timer timerJoin;
+                for(int threadIdx =0 ; threadIdx < nThread ; threadIdx++)
+                    workerThread[threadIdx].join();
+
+                ROS_INFO("join time = %f",timerJoin.stop());
+                Timer timerInsertion;
+                // combine result
+                int nNewNode = 0;
+                int nNewEdge = 0;
+                LayerExtensionResult extResult;
+                for (int threadIdx =0; threadIdx < nThread ; threadIdx++){
+                    extResult = extResult + extResultSet[threadIdx];
+                    nNewEdge += extResultSet[threadIdx].nEdgesFromPrevious;
+                    nNewNode += extResultSet[threadIdx].nFeasibleAndConnectedNodes;
+
+                    // insert nodes of this thread
+                    for (int j = 0; j < nodeExtArrSet[threadIdx].size() ; j++){
+                        int pntIdx = nodeExtArrSet[threadIdx][j].pntIdx;
+                        Point cur_node_pnt = candidateNodes.points[pntIdx];
+
+                        int v = node_insert_idx; // index of this vertex
+                        chaserGraph.nodes.coeffRef(0, node_insert_idx) = n;
+                        chaserGraph.nodes.coeffRef(1, node_insert_idx) = pntIdx;
+                        chaserGraph.nodes.coeffRef(2,node_insert_idx) = cur_node_pnt.x;
+                        chaserGraph.nodes.coeffRef(3,node_insert_idx) = cur_node_pnt.y;
+                        chaserGraph.nodes.coeffRef(4,node_insert_idx) = cur_node_pnt.z;
+                        chaserGraph.nodes.coeffRef(5,node_insert_idx) =  v;
+
+                        node_insert_idx++;
+
+                        // register edge heading to this vertex
+                        vector<Edge> edgeToThisVertex = nodeExtArrSet[threadIdx][j].connectedEdges;
+                        for (int k  = 0; k <edgeToThisVertex.size() ; k++  ){
+                            int u = edgeToThisVertex[k].u;
+                            chaserGraph.edges(0,edge_insert_idx) = n;
+                            chaserGraph.edges(1,edge_insert_idx) = u;
+                            chaserGraph.edges(2,edge_insert_idx) = v;
+                            chaserGraph.edges(3,edge_insert_idx) = edgeToThisVertex[k].w;
+                            edge_insert_idx++;
+                        }
+                    }
+                }
+
+                if (nNewEdge> 0) {
+                    if (n < chaserGraph.N )
+                        chaserGraph.node_div_location[n+1] = chaserGraph.node_div_location[n] + nNewNode;
+                    else {
+                        chaserGraph.N_node = chaserGraph.node_div_location[n] + nNewNode;
+                    }
+                    if (n < chaserGraph.N)
+                        chaserGraph.edge_div_location[n] = chaserGraph.edge_div_location[n-1] + nNewEdge;
+                    else
+                        chaserGraph.N_edge = chaserGraph.edge_div_location[n-1] + nNewEdge;
+                }
+                ROS_INFO("timer for insertion = %f",timerInsertion.stop());
+
+                reporter.push_back(extResult);
+                if (not extResult.isSuccess){
+                    ROS_WARN_STREAM("Preplanner: " <<": Layer was not connected from " << n-1 << " to " << n << ". Aborting preplanning.");
+                    isGraphConnect = false;
+                    break;
+                }
+            }
+
+            state.graphSolveSuccess = false;
+            if (isGraphConnect) {
+                Timer timerSolve;
+                state.graphSolveSuccess = chaserGraph.solve();
+                double elapse = timerSolve.stop();
+                reporter.elapseSolve = elapse;
+            }
+
+            /**
+             * Update state and vis
+             */
+            mutex_.lock();
+            visSet.candidateNodesPath.clear();
+            reporter.elapseConstruction = tGraphGen.stop();
+            visSet.candidateNodesPath = chaserGraph.getPCLPath(param.worldFrameId,reporter.N);
+            state.graphConstructionSuccess = isGraphConnect;
+
+            if (state.graphSolveSuccess){
+                // waypoints
+                Path solution;
+                for (int n = 0; n <= state.nLastQueryStep; n++) {
+                    int idx = chaserGraph.optimal_node_idx_seq(n);
+                    Eigen::Vector3f curNode = chaserGraph.nodes.block(2,idx,3,1);
+                    solution.append(Point(curNode));
+                }
+                state.solutionPath = solution;
+                visSet.graphSolution = solution.toNavPath(param.worldFrameId);
+
+                // bearing vector
+                visSet.bearingMarker.markers.clear();
+                for (int m =0 ;m < param.nTarget ; m++){
+                    Path targetPathWithInitial;
+                    targetPathWithInitial.points.push_back(state.curTargets.points[m]);
+                    for(int n = 0 ; n < state.nLastQueryStep ; n++){
+                        targetPathWithInitial.points.push_back(state.futureTargetPoints[m].traj.points[n]);
+                    }
+                    visualization_msgs::MarkerArray curBearing =
+                            solution.get_bearing(visSet.bearingBase, targetPathWithInitial);
+
+                    for (int n = 0; n <= state.nLastQueryStep ; n++){
+                        auto marker = curBearing.markers[n];
+                        marker.id = n;
+                        marker.header.frame_id = param.worldFrameId;
+                        marker.ns = "target_" + to_string(m);
+                        marker.pose.orientation.w = 1.0;
+                        visSet.bearingMarker.markers.push_back(marker);
+                    }
+
+                    // clearing
+                    for (int n = state.nLastQueryStep + 1; n <=param.nMaxStep ; n++ ){
+                        visualization_msgs::Marker eraser;
+                        eraser.pose.orientation.w= 1.0;
+                        eraser.header.frame_id = param.worldFrameId;
+                        eraser.type = visualization_msgs::Marker::DELETE;
+                        eraser.ns = "target_" + to_string(m);
+                        eraser.id = n;
+                        visSet.bearingMarker.markers.push_back(eraser);
+                    }
+                }
+            }
+
+            mutex_.unlock();
+            reporter.report(); // report current graph connection status
+            return isGraphConnect;
+        }
+
 
         bool Preplanner::createGraph() {
 
@@ -642,7 +957,6 @@ namespace dual_chaser{
             // get param for graph  ...
             int N = state.nLastQueryStep;  // future step
             int M = param.nTarget; // target number
-            float dt = state.timeKnotLocal[1] - state.timeKnotLocal[0] ; // time interval time knots (uniform assumed)
 
             // initialize graph (e.g. pre-allocation)
             int nMaxNodes = 1;
@@ -670,7 +984,7 @@ namespace dual_chaser{
             bool isGraphConnect = true;
             ChaserGraph chaserGraph;
             chaserGraph.edges = Eigen::MatrixXf(5,nMaxEdges);
-            chaserGraph.nodes = Eigen::MatrixXf(5,nMaxNodes);
+            chaserGraph.nodes = Eigen::MatrixXf(6,nMaxNodes);
             chaserGraph.edge_div_location = new int[N]; chaserGraph.edge_div_location[0] = 0;
             chaserGraph.node_div_location = new int[N+1]; chaserGraph.node_div_location[0] = 0; chaserGraph.node_div_location[1] = 1;
             chaserGraph.N = N;
@@ -678,20 +992,38 @@ namespace dual_chaser{
             // fill the seed element (current chaser location)
             int N_cur_layer_pnt = 1; int N_cur_layer_edge = 0;
             int node_insert_idx = 0; int edge_insert_idx = 0;
+
+            chaserGraph.nodes(5,node_insert_idx) = 0; // node index
             chaserGraph.nodes(0,node_insert_idx) = chaserGraph.nodes(1,node_insert_idx)  = 0; // t/n
             chaserGraph.nodes.block(2,node_insert_idx,3,1) = chaserPnt; // point (x,y,z)
-            chaserGraph.node_div_location[1] =chaserGraph.node_div_location[0] + N_cur_layer_pnt;
+            chaserGraph.node_div_location[1] = chaserGraph.node_div_location[0] + N_cur_layer_pnt;
             node_insert_idx++;
 
             /**
              * Extend graph layer for step
              */
-            const int nTrialPerStep = 3;
             for (int n = 1 ; n <= N ; n++){ // index = future step
+
                 PointSet candidateNodes;
                 state.vsf_path[n-1].getPnt(param.graphNodeStride ,hollowPath[n-1],candidateNodes);
+                // previous
                 LayerExtensionResult extResult = extendLayer(chaserGraph,n,candidateNodes,param,
                                                              node_insert_idx,edge_insert_idx);
+
+                N_cur_layer_edge = extResult.nEdgesFromPrevious;
+                N_cur_layer_pnt = extResult.nFeasibleAndConnectedNodes;
+                if (N_cur_layer_edge > 0) {
+                    extResult.isSuccess = true;
+                    if (n < chaserGraph.N )
+                        chaserGraph.node_div_location[n+1] = chaserGraph.node_div_location[n] + N_cur_layer_pnt;
+                    else {
+                        chaserGraph.N_node = chaserGraph.node_div_location[n] + N_cur_layer_pnt;
+                    }
+                    if (n < chaserGraph.N)
+                        chaserGraph.edge_div_location[n] = chaserGraph.edge_div_location[n-1] + N_cur_layer_edge;
+                    else
+                        chaserGraph.N_edge = chaserGraph.edge_div_location[n-1] + N_cur_layer_edge;
+                }
 
                 reporter.push_back(extResult);
                 if (not extResult.isSuccess){
@@ -701,13 +1033,13 @@ namespace dual_chaser{
                 }
             }
 
+            reporter.elapseConstruction = tGraphGen.stop();
             /**
              * Update state and vis
              */
             mutex_.lock();
             visSet.candidateNodesPath.clear();
             state.curGraph = chaserGraph;
-            reporter.elapseConstruction = tGraphGen.stop();
             visSet.candidateNodesPath = chaserGraph.getPCLPath(param.worldFrameId,reporter.N);
             state.graphConstructionSuccess = isGraphConnect;
             mutex_.unlock();

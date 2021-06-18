@@ -15,7 +15,7 @@ namespace dual_chaser{
 
     struct ChaserGraph{
         GraphParm param;
-        Eigen::MatrixXf nodes; // column = [t n x y z] (n : detector idx in its sphere)
+        Eigen::MatrixXf nodes; // column = [t n x y z i] (n : detector idx in its sphere / i node index )
         Eigen::MatrixXf edges; // column = [t u v w] (u,v : node idx )
         Eigen::MatrixXf optimal_cost_to_nodes; // column = [optimal_cost_to_the_node / optimal_parent]
         int* edge_div_location; // edge_div_location[t] : the first col where the edge from time t-1 to time (t) appears for the first time

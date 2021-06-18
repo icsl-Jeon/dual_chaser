@@ -1,6 +1,7 @@
 <launch>
     <arg name="is_bag" default="false"/>
     <arg name="target_lib_name" default="target2d_3s"/>
+    <arg name ="param_file" default="default.yaml"/>
     <param name="use_sim_time" value="$(arg is_bag)"/>
     <arg name="point_topic" default="/zed_client_node/points_masked"/>
 
@@ -19,7 +20,7 @@
         <remap from="cloud_in" to="$(arg point_topic)" />
 
         <!-- Dual chaser -->
-        <rosparam file="$(find dual_chaser)/param/circling.yaml" command="load"/>
+        <rosparam subst_value="true" file="$(find dual_chaser)/param/$(arg param_file)" command="load"/>
     </node>
 
 </launch>

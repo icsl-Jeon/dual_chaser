@@ -94,11 +94,11 @@ namespace dual_chaser {
         }
             // if not, unsolved
         else {
-            cout << "[DetectorGraph] no solution." << endl;
+            cout << "[Graph] no solution." << endl;
             return false;
         }
-        cout << "optimal node" << endl;
-        cout << optimal_node_idx_seq.transpose() << endl;
+//        cout << "optimal node" << endl;
+//        cout << optimal_node_idx_seq.transpose() << endl;
         return true;
     }
 

@@ -10,9 +10,10 @@
         <arg name="param_file" value="$(find dual_chaser)/param/zed2_client/circling.yaml"/>
     </include>
 
-    <include file="$(find dual_chaser)/launch/preplanner.launch">
+    <include file="$(find dual_chaser)/launch/run.launch">
         <arg name="is_bag" value="true"/>
         <arg name="point_topic" value="/cloud_in"/>
+        <arg name="param_file" value="default.yaml"/>
     </include>
 
     <node pkg="rviz" type="rviz" name="rviz_zed_prediction"

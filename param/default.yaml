@@ -1,8 +1,8 @@
 frame_id: map
-horizon: 2.0 # this horizon should be smaller than target_manager/horizon
+horizon: 1.5 # this horizon should be smaller than target_manager/horizon
 n_target: 2 # number of target
 early_end: 1.0 # horizon - early_end = period
-desired_position_smoothing: 0.0 # [0,1]
+desired_position_smoothing: 0.9 #  [0,1]
 history_collect_interval: 0.2 # [s]
 only_preplan: false # true : only preplan, at initial state =  drone state
 preplanner:
@@ -10,42 +10,42 @@ preplanner:
   n_max_step: 3 # maximum number of discretiazation over horizon
   edf_max_dist: 2.0 # max distance to be calculated in euclidean distance field
   max_bearing: 1.25 # max distance to be calculated in euclidean distance field
-  des_dist: 2.5 # desired relative distance to target
+  des_dist: 3.5 # desired relative distance to target
   score_field_resolution: 0.4 # resolution for visibility fields
-  score_field_max_connect_vel: 2.5 # [m/s] maximum connectable edge length
+  score_field_max_connect_vel: 4.5 # [m/s] maximum connectable edge length
   score_field_node_stride: 2 # stride to build candidate nodes on scorefield
   score_field_margin: # not necessarily use the whole volume to sample graph nodes
-    xy: 3.3 # extension to +/-xy
+    xy: 4.0 # extension to +/-xy
     z_top: 1.0 # extension to +/-z w.r.t target at each step
-    z_bottom: 0.0 # extension to +/-z w.r.t target at each step
+    z_bottom: 0.5 # extension to +/-z w.r.t target at each step
   collision_clearance: 0.6 # increasing this can sort out unsafe points and can reduce graph build time
   occlusion_clearance: 0.3
   target_collision_simple: false # true = simple sphere check / false = ellipsoid checking
   target_collision_sphere_rad: 0.6
   target_collision_ellipse_line:  # when checking line collision with targets move, use this scale for target ellipsoid.
     # make sure r = r_{drone} + r_{human}
-    x: 1.2
-    y: 1.2
+    x: 2.0
+    y: 2.0
     z: 2.5
   target_collision_ellipse_step:  # vsf candidate nodes outside of this volume (also inter-ellipse) at each step .
     # make sure r = r_{drone} + r_{human}
-    x: 2.3
-    y: 2.3
+    x: 2.4
+    y: 2.4
     z: 4.0
   target_occlusion_ellipse: # volume to consider inter occlusion (semi-axis length). should not be too big
     x: 0.3
     y: 0.3
     z: 0.8
-  n_thread: 8 # number of thread to traverse score field
+  n_thread: 8 # number of thread to traverse score field and graph construction
   weight:  # weight when finding optical graph solution
     distance: 10.0
     bearing: 1.0
     visibility: 8.0
-    rel_distance: 8.0
+    rel_distance: 20.0
     init_vel_dir: 3.0
 smooth_planner:
   preplan_track_rad: 0.3 # [m] linear inequality to confine deviation from preplanned waypoint (<= occlusion_clearance)
-  poly_order: 6,
+  poly_order: 6
   length_step: 0.5 # [m] step size to form corridors between waypoints
   weight:
     qp_vel: 0.0,
@@ -67,7 +67,7 @@ visualization:
   edf_volume:
     r: 0.8
     g: 0.8
-    b: 0.9
+    b: 0.
     a: 0.1
   target_collision_volume:
     r: 0.8

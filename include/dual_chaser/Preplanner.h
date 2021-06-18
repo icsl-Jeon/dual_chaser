@@ -195,7 +195,6 @@ namespace dual_chaser{
 
                 // outcome of planning
                 MultiVisibilityScoreField* vsf_path;
-                ChaserGraph curGraph;
                 Path solutionPath;
             };
 
@@ -216,10 +215,6 @@ namespace dual_chaser{
             // MISC UTILS
             bool TC_collision (const LineSegment& targetMove,
                                const LineSegment& chaserMove) const;
-            LayerExtensionResult extendLayer(ChaserGraph& chaserGraph, int n,
-                                             const PointSet& newLayer, Param tryParam,
-                                             int& node_insert_idx,int& edge_insert_idx);
-
             void insertNodes(const Eigen::MatrixXf& previousNodeBlock ,int n ,
                                     vector<Point> triedPoints, pair<int,int> pntIndexRange , Param tryParam,
                                     vector<NodeExtensionResult>& nodeExtArr,
@@ -227,9 +222,7 @@ namespace dual_chaser{
 
             // SUB ROUTINES
             bool createVsfPath();
-            bool createGraph();
-            bool createGraph2();
-            bool solveGraph();
+            bool planGraph();
 
             // SESSION WRAPPER
             bool initSession(const PlanningInput& planningInput);

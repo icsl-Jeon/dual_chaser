@@ -345,6 +345,7 @@ namespace dual_chaser{
             }
 
             // 2. Construct VSF
+            mutex_.lock();
             state.edtServerPtr->getLocker().lock();
             for (int n = 0 ; n < N; n++) {
                 state.vsf_path[n].setup(state.edtServerPtr, param.nTarget); // update edf information
@@ -354,7 +355,6 @@ namespace dual_chaser{
 
             // Upload visualization
              if (isOk) {
-                 mutex_.lock();
                  for (int n = 0; n < N; n++) {
                      float meanHeight = 0;
                      for (int m = 0; m < M; m++) {
@@ -366,7 +366,6 @@ namespace dual_chaser{
                      visSet.vsfPclPath[n] = (state.vsf_path[n].getFieldIntensity(meanHeight, param.occlusionEps));
                      visSet.vsfPclPath[n].header.frame_id = param.worldFrameId;
                  }
-                 mutex_.unlock();
 
                  // report
                  for (int n =0; n < state.nLastQueryStep ; n++)
@@ -375,6 +374,7 @@ namespace dual_chaser{
              }else
                  ROS_ERROR("Preplanner: vsf chain computation failed. Not updating visualization.");
             state.vsfSuccess = isOk;
+            mutex_.unlock();
             return isOk;
         }
 
@@ -432,7 +432,7 @@ namespace dual_chaser{
 
                 // result of graph construction
                 if (state.graphConstructionSuccess){
-                    for (int n = 0 ; n< state.nLastQueryStep ; n++){
+                    for (int n = 0 ; n< reporter.N ; n++){
                         visSet.candidateNodesPath[n].header.stamp = pcl_conversions::toPCL(curTime);
                         pubSet.candidNodesPath[n].publish(visSet.candidateNodesPath [n]);
                     }
@@ -598,11 +598,10 @@ namespace dual_chaser{
             int prevMaxNodes = 1;
 
             // determine candidate points
-            vector<vector<EllipsoidNoRot>> hollowPath;
+//            vector<vector<EllipsoidNoRot>> hollowPath;
+            vector<PointSet> candidateNodesPath;
+
             for (int n = 0 ; n < N ; n++){
-                nMaxNodes += state.vsf_path[n].size();
-                nMaxEdges += prevMaxNodes*nMaxNodes;
-                prevMaxNodes = nMaxNodes;
 
                 vector<EllipsoidNoRot> hollow; // region to be removed
                 for (int m =0; m < M ; m++)
@@ -610,13 +609,24 @@ namespace dual_chaser{
                                         param.TC_ellipsoidScaleCollisionStep);
                 hollow.emplace_back(state.targetSetPath[n].center().toEigen().cast<double>(),
                                     param.TC_ellipsoidScaleCollisionStep);
-                hollowPath.push_back(hollow);
+//                hollowPath.push_back(hollow);
+
+                // point sample
+                PointSet candidateNodes;
+                state.vsf_path[n].getPnt(param.graphNodeStride ,hollow,candidateNodes);
+                candidateNodesPath.push_back(candidateNodes);
+
+                nMaxNodes += candidateNodes.size();
+                nMaxEdges += prevMaxNodes*nMaxNodes;
+                prevMaxNodes = nMaxNodes;
+
             }
 
             Timer tGraphGen;
             reporter.init();
             bool isGraphConnect = true;
             ChaserGraph chaserGraph;
+            ROS_INFO("graph allocation : (V=%d,E =%d)" , 5* nMaxNodes, 6*nMaxEdges);
             chaserGraph.edges = Eigen::MatrixXf(5,nMaxEdges);
             chaserGraph.nodes = Eigen::MatrixXf(6,nMaxNodes);
             chaserGraph.edge_div_location = new int[N]; chaserGraph.edge_div_location[0] = 0;
@@ -634,10 +644,7 @@ namespace dual_chaser{
             node_insert_idx++;
 
             for (int n = 1 ; n <= N ; n++) { // index = future step
-                // point sample
-                PointSet candidateNodes;
-                state.vsf_path[n-1].getPnt(param.graphNodeStride ,hollowPath[n-1],candidateNodes);
-
+                const PointSet& candidateNodes = candidateNodesPath[n-1];
                 int nThread = param.nThread;
                 int nTotalPoint = candidateNodes.points.size();
                 vector<std::thread> workerThread;

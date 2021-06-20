@@ -18,7 +18,7 @@ preplanner:
     xy: 4.0 # extension to +/-xy
     z_top: 1.0 # extension to +/-z w.r.t target at each step
     z_bottom: 0.5 # extension to +/-z w.r.t target at each step
-  collision_clearance: 0.6 # increasing this can sort out unsafe points and can reduce graph build time
+  collision_clearance: 0.8 # increasing this can sort out unsafe points and can reduce graph build time
   occlusion_clearance: 0.3
   target_collision_simple: false # true = simple sphere check / false = ellipsoid checking
   target_collision_sphere_rad: 0.6
@@ -36,12 +36,12 @@ preplanner:
     x: 0.3
     y: 0.3
     z: 0.8
-  n_thread: 8 # number of thread to traverse score field and graph construction
+  n_thread: 6 # number of thread to traverse score field and graph construction
   weight:  # weight when finding optical graph solution
     distance: 10.0
     bearing: 1.0
-    visibility: 8.0
-    rel_distance: 20.0
+    visibility: 1.0
+    rel_distance: 10.0
     init_vel_dir: 3.0
 smooth_planner:
   preplan_track_rad: 0.3 # [m] linear inequality to confine deviation from preplanned waypoint (<= occlusion_clearance)

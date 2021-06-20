@@ -78,8 +78,12 @@ namespace dual_chaser{
         nhPrivate.param("preplanner/target_collision_ellipse_line/y", param.TC_ellipsoidScaleCollision(1), double(0.4));
         nhPrivate.param("preplanner/target_collision_ellipse_line/z", param.TC_ellipsoidScaleCollision(2), double(0.8));
 
-        // Bearing arrow history initialization
+        nhPrivate.param("preplanner/target_occlusion_ellipse/x", param.ellipsoidScaleOcclusion(0), double(0.5));
+        nhPrivate.param("preplanner/target_occlusion_ellipse/y", param.ellipsoidScaleOcclusion(1), double(0.5));
+        nhPrivate.param("preplanner/target_occlusion_ellipse/z", param.ellipsoidScaleOcclusion(2), double(0.5));
 
+
+        // Bearing arrow history initialization
         nhPrivate.param("visualization/bearing_dt",param.bearingCollectInterval,0.2f);
         nhPrivate.param("visualization/history_bearing_arrow/target1/r",visSet.bearingHistoryArrowBase[0].color.r,float(0.7));
         nhPrivate.param("visualization/history_bearing_arrow/target1/g",visSet.bearingHistoryArrowBase[0].color.g,float(0.3));
@@ -103,6 +107,7 @@ namespace dual_chaser{
             pubSet.bearingHistory[m] = nhPrivate.advertise<visualization_msgs::MarkerArray>(topicPrefixTarget + "/bearing",1);
             pubSet.targetHistory[m] = nhPrivate.advertise<nav_msgs::Path>(topicPrefixTarget + "/history",1);
         }
+        pubSet.chaserStatus = nhPrivate.advertise<dual_chaser_msgs::Status>(topicPrefix + "/status",1);
 
         callbackQueue.clear();
         nhTimer.setCallbackQueue(&callbackQueue);
@@ -196,7 +201,6 @@ namespace dual_chaser{
         edtServerPtr->getLocker().unlock();
         return pinSet;
     }
-
 
     void Wrapper::prepare(smooth_planner::PlanningInput &planningInput,
                           const preplanner::PlanningOutput &planningOutput) {
@@ -355,6 +359,7 @@ namespace dual_chaser{
         chaserState.stamp = tLastChaserStateUpdate;
         chaserState.velocity = curChaserVelocity;
         chaserState.position = curChaserPose.getTranslation();
+        chaserState.acceleration = curChaserAcceleration;
         return chaserState;
     }
 
@@ -371,7 +376,7 @@ namespace dual_chaser{
             tEval = min (tEval , horizon);
             returnState.position = curPlan.droneTrajectory.trajPtr->eval(tEval, 0);
             returnState.velocity = curPlan.droneTrajectory.trajPtr->eval(tEval, 1);
-
+            returnState.acceleration = curPlan.droneTrajectory.trajPtr->eval(tEval, 2);
         }else{
             ROS_ERROR("Wrapper: requested get-chaser plan but still no plan");
         }
@@ -541,6 +546,97 @@ namespace dual_chaser{
         return evalPose;
     }
 
+
+    dual_chaser_msgs::Status Wrapper::getCurStatus() const {
+        dual_chaser_msgs::Status probe;
+        probe.header.frame_id = param.worldFrameId;
+        probe.header.stamp = ros::Time::now(); // strictly speaking, this is not correct
+
+        vector<chasing_utils::ObjectState> stateSet;
+        stateSet.push_back(state.getChaserState() ); // drone state
+        stateSet.push_back(state.lastEmitPlanPose ); // plan state
+
+        // first, insert drone and plan state
+        dual_chaser_msgs::State * insertPtr[2] = {&probe.drone_state, &probe.plan_state};
+        for (int n =0 ; n < 2 ; n++){
+            insertPtr[n]->position = stateSet[n].position.toGeometry();
+            insertPtr[n]->velocity = stateSet[n].velocity.toGeometry();
+            insertPtr[n]->acceleration= stateSet[n].acceleration.toGeometry();
+            insertPtr[n]->velocity_mag.data = stateSet[n].velocity.norm();
+            insertPtr[n]->acceleration_mag.data = stateSet[n].acceleration.norm();
+        }
+
+        // next, target state insertion
+        vector<ObjectState> targetStates = targetManagerPtr->lookupLastTargetStates();
+        probe.target_states.resize(param.nTarget);
+        for (int n = 0; n < param.nTarget ; n++){
+            probe.target_states[n].position = targetStates[n].position.toGeometry();
+            probe.target_states[n].velocity = targetStates[n].velocity.toGeometry();
+            probe.target_states[n].acceleration= targetStates[n].acceleration.toGeometry();
+            probe.target_states[n].velocity_mag.data = targetStates[n].velocity.norm();
+            probe.target_states[n].acceleration_mag.data = targetStates[n].acceleration.norm();
+        }
+
+        // planning objectives (w.r.t planner result)
+        Point chaserPlanPoint = state.lastEmitPlanPose.position;
+        // safety
+        octomap::point3d chaserPntOcto (chaserPlanPoint.x,chaserPlanPoint.y, chaserPlanPoint.z);
+        float distObstacleChaser = edtServerPtr->getDistance(chaserPntOcto);
+        std_msgs::Float32 msg; msg.data = distObstacleChaser;
+        probe.obstacle_collision = std_msgs::Float32 (msg);
+
+        vector<Pose> targetPose = targetManagerPtr->lookupLastTargets();
+        PointSet targetPointSet;
+
+        for (int m = 0 ; m < param.nTarget ; m++ ){
+
+            Point targetPoint = targetPose[m].getTranslation();
+            targetPointSet.points.push_back(targetPoint);
+
+            LineSegment viewVector (targetPoint,chaserPlanPoint);
+
+            // relative distance
+            std_msgs::Float32 distance;
+            distance.data =  viewVector.length();
+            probe.relative_distances.push_back(distance);
+
+            float ds = edtServerPtr->getResolution();
+            PointSet points = viewVector.samplePoints(ds,true);
+            float distObstacle = numeric_limits<float>::max();
+            float distOtherTarget = numeric_limits<float>::max();
+
+            for (Point pnt : points.points){ // ray along view vector
+                // bearing occlusion
+               octomap::point3d pntOcto (pnt.x,pnt.y,pnt.z);
+               float dist = edtServerPtr->getDistance(pntOcto);
+               distObstacle = min (dist,distObstacle);
+
+                // occlusion against other obstacle  (positive -> not occluded )
+                if (param.nTarget == 2){
+                    Point otherTargetPoint  = ( m ==0 ) ? targetPose[1].getTranslation() : targetPose[0].getTranslation();
+                    EllipsoidNoRot occlusionEllipsoid(otherTargetPoint.toEigen().cast<double>(),param.ellipsoidScaleOcclusion );
+                    distOtherTarget = min (occlusionEllipsoid.evalDist(pnt), (double) distOtherTarget);
+                }
+            }
+            distance.data = distObstacle;
+            probe.obstacle_occlusions.push_back(distance);
+            if (param.nTarget == 2){
+                distance.data = distOtherTarget;
+                probe.inter_occlusions.push_back(distance);
+            }
+        }
+
+        // bearing angle
+        if (param.nTarget  == 2) {
+            float angle = bearingAngle(targetPointSet,chaserPlanPoint);
+            std_msgs::Float32 msg;
+            msg.data = angle;
+            probe.bearing_angle = msg;
+        }
+
+        return probe;
+    }
+
     /**
      * Update chaser state and publish
      * @param event
@@ -554,17 +650,22 @@ namespace dual_chaser{
             try {
                 tfListenerPtr->lookupTransform(param.worldFrameId, param.zedFrameId,
                                                ros::Time(0), transform);
-                transform.child_frame_id_ = param.chaserFrameId;
-                transform.stamp_ = curTime;
-                tfBroadcasterPtr->sendTransform(transform);
-
+                tf::StampedTransform transformEmit = transform;
+                transformEmit.child_frame_id_ = param.chaserFrameId;
+                transformEmit.stamp_ = curTime;
+                tfBroadcasterPtr->sendTransform(transformEmit);
                 Pose newPose(transform);
-                float dt = (transform.stamp_ - state.tLastChaserStateUpdate).toSec();
-                state.curChaserVelocity = (newPose.getTranslation() - state.curChaserPose.getTranslation()) * (1.0/dt);
-                state.curChaserPose = newPose;
-                state.tLastChaserStateUpdate = curTime;
-                state.isChaserPose  = true;
 
+                float dt = (transform.stamp_ - state.tLastChaserStateUpdate).toSec(); // tf incoming rate can be slolwer than this callback
+                if (dt > 0 ) {
+                    Point newVelocity = (newPose.getTranslation() - state.curChaserPose.getTranslation()) * (1.0 / dt);
+                    state.curChaserAcceleration = (newVelocity - state.curChaserVelocity) * (1.0 / dt);
+                    state.curChaserVelocity = newVelocity;
+                }
+                state.curChaserPose = newPose;
+                state.tLastCallbackTime = curTime;
+                state.tLastChaserStateUpdate = transform.stamp_;
+                state.isChaserPose  = true;
 
             } catch (tf::TransformException& ex) {
                 ROS_ERROR_STREAM(ex.what());
@@ -584,7 +685,9 @@ namespace dual_chaser{
                 updateTime(visSet.corridorMarkerArray, curTime);
                 pubSet.corridor.publish(visSet.corridorMarkerArray);
             }
+
             if (state.isPlan) {
+
                 visSet.curPlan.header.stamp = curTime;
                 pubSet.curPlan.publish(visSet.curPlan); // planning trajectory
                 Pose curPlanPose = emitCurrentPlanningPose(); // output planning pose from current state
@@ -594,9 +697,10 @@ namespace dual_chaser{
                 auto desiredTf = curPlanPose.toTf(param.worldFrameId, param.chaserPlanningFrameId, curTime);
                 tfBroadcasterPtr->sendTransform(desiredTf);
 
-                // collect current planning
+                /**
+                 * collect current planning history
+                 */
                 if ((curTime - state.tLastPlanningCollect).toSec() > param.historyCollectInterval) {
-
                     // chaser
                     visSet.curPlanHistory.header.stamp = curTime;
                     geometry_msgs::PoseStamped poseStamped;
@@ -615,7 +719,7 @@ namespace dual_chaser{
                     state.tLastPlanningCollect = curTime;
                 }
 
-
+                // view vector
                 if ((curTime - state.tLastBearingCollect).toSec() > param.bearingCollectInterval) {
                     for (int m = 0; m < param.nTarget; m++) {
                         visSet.bearingHistoryArrowBase[m].points.clear();
@@ -627,7 +731,6 @@ namespace dual_chaser{
                     }
 
                     state.tLastBearingCollect = curTime;
-
                 }
 
                 pubSet.curPlanHistory.publish(visSet.curPlanHistory);
@@ -636,6 +739,13 @@ namespace dual_chaser{
                     pubSet.targetHistory[m].publish(visSet.targetHistory[m]);
                 }
 
+                /**
+                 *  Status publish
+                 */
+                if (edtServerPtr->getLocker().try_lock()) {
+                    pubSet.chaserStatus.publish(getCurStatus());
+                    edtServerPtr->getLocker().unlock();
+                }
             }
             mutexVis.unlock();
         }else{

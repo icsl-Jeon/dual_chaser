@@ -6,6 +6,7 @@
 #define DUAL_CHASER_WRAPPER_H
 #include <dual_chaser/Preplanner.h>
 #include <traj_gen/TrajGen.hpp>
+#include <dual_chaser_msgs/Status.h>
 
 using namespace chasing_utils;
 
@@ -50,6 +51,8 @@ namespace dual_chaser{
 
     }
 
+
+
     class Wrapper{
         enum PLANNING_LEVEL{
             PRE_PLANNING,
@@ -67,6 +70,8 @@ namespace dual_chaser{
             float knotEps = 0.3;
             float OC_collisionEps = 0.3;
             Vector3d TC_ellipsoidScaleCollision;
+            Eigen::Vector3d ellipsoidScaleOcclusion; // ellipsoid model for targets of interest (for inter occlusion)
+
             std_msgs::ColorRGBA corridorColor;
 
             int polyOrder = 5;
@@ -81,7 +86,8 @@ namespace dual_chaser{
         };
         struct State{
             float horizon;
-            ros::Time tLastChaserStateUpdate;
+            ros::Time tLastChaserStateUpdate; // time of the stamp of last lookup-ed tf of chaser
+            ros::Time tLastCallbackTime; // ros time when the async callback called
             ros::Time tLastPlanningTrigger;  // even if planning failed, it is recorded ?
             ros::Time tLastPlanningCollect = ros::Time(0);
             ros::Time tLastBearingCollect = ros::Time(0);
@@ -96,6 +102,7 @@ namespace dual_chaser{
             smooth_planner::PlanningOutput curPlan; // current planning result (smooth plan)
             Pose curChaserPose; // latest update at async callback
             Point curChaserVelocity; // latest update at async callback (world frame)
+            Point curChaserAcceleration;
             ChaserState lastEmitPlanPose; // update in emitCurrentPlanningPose
 
             ChaserState getChaserState() const; // returns current drone state
@@ -119,6 +126,7 @@ namespace dual_chaser{
             ros::Publisher bearingHistoryArrowBase[2];
             ros::Publisher bearingHistory[2]; // target A and B
             ros::Publisher targetHistory[2];
+            ros::Publisher chaserStatus;
         };
 
         struct VisualizationSet{
@@ -168,6 +176,8 @@ namespace dual_chaser{
         bool plan();
         bool trigger();
         Pose emitCurrentPlanningPose();
+        dual_chaser_msgs::Status getCurStatus() const;
+
     public:
         Wrapper();
         ~Wrapper() {asyncSpinnerPtr->stop();};

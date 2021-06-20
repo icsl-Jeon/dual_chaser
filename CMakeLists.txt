@@ -5,12 +5,12 @@ add_compile_options(-std=c++14)
 set(CMAKE_BUILD_TYPE release)
 find_package(Eigen3 REQUIRED NO_MODULE)
 
-find_package(catkin REQUIRED roscpp octomap_ros octomap_server pcl_ros tf chasing_utils)
+find_package(catkin REQUIRED roscpp octomap_ros octomap_server pcl_ros tf
+        chasing_utils dual_chaser_msgs )
 
 find_package(TrajGen REQUIRED)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 message( "cmake module path : ${CMAKE_MODULE_PATH}")
-
 
 catkin_package(
   INCLUDE_DIRS include

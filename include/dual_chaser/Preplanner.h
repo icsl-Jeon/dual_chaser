@@ -11,6 +11,7 @@
 
 using namespace chasing_utils;
 using namespace std;
+typedef ObjectState ChaserState;
 
 namespace dual_chaser{
     namespace preplanner {
@@ -77,7 +78,6 @@ namespace dual_chaser{
 
         struct LayerExtensionResult{
             bool isSuccess = false;
-
             int nRejectEdgesTargetCollision =0;
             int nRejectEdgesDistanceAllowable =0;
             int nRejectEdgesTraverseObstacleCollision =0;

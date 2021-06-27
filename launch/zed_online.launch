@@ -1,7 +1,7 @@
 <launch>
     <arg name="plot_juggler" default="false"/>
-    <arg name="rqt_gui" default="false"/>
-    <arg name="rviz" default="true"/>
+    <arg name="rqt_gui" default="true"/>
+    <arg name="rviz" default="false"/>
     <arg name="rosbag_status" default="true"/>
 
     <include file="$(find zed2_client)/launch/client.launch">
@@ -18,7 +18,7 @@
         <arg name="is_bag" value="true"/>
         <arg name="point_topic" value="/cloud_in"/>
 <!--        <arg name="param_file" value="default.yaml"/>-->
-        <arg name="param_file" value="base_line.yaml"/>
+        <arg name="param_file" value="default.yaml"/>
     </include>
 
 
@@ -35,7 +35,7 @@
           args="-d $(find dual_chaser)/rviz/dual_chaser.rviz" output="log" if="$(arg rviz)"/>
 
     <!-- rosbag record -->
-    <node pkg="rosbag" type="record" name="rosbag_record_cam"
+    <node pkg="rosbag" type="record" name="rosbag_record_status"
           args = "record -o $(find dual_chaser)/rosbag/status /dual_chaser/wrapper/status"
           if ="$(arg rosbag_status)">
     </node>

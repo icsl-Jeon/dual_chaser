@@ -1,6 +1,6 @@
 frame_id: map
+drone_frame_id: base_link
 horizon: 1.5 # this horizon should be smaller than target_manager/horizon
-n_target: 2 # number of target
 early_end: 1.0 # horizon - early_end = period
 desired_position_smoothing: 0.9 #  [0,1]
 history_collect_interval: 0.2 # [s]
@@ -10,6 +10,7 @@ preplanner:
   n_max_step: 3 # maximum number of discretiazation over horizon
   edf_max_dist: 2.0 # max distance to be calculated in euclidean distance field
   max_bearing: 1.25 # max distance to be calculated in euclidean distance field
+  max_angle_diff_from_sensor_deg: 350 # max allowable look angle diff between node and current sensor point
   des_dist: 3.5 # desired relative distance to target
   score_field_resolution: 0.4 # resolution for visibility fields
   score_field_max_connect_vel: 4.5 # [m/s] maximum connectable edge length
@@ -40,7 +41,7 @@ preplanner:
   weight:  # weight when finding optical graph solution
     distance: 10.0
     bearing: 1.0
-    visibility: 1.0
+    visibility: 10.0
     rel_distance: 10.0
     init_vel_dir: 3.0
 smooth_planner:

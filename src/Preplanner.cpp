@@ -78,6 +78,9 @@ namespace dual_chaser{
             nh.param("horizon",param.horizon,1.0f);
             nh.param("preplanner/n_max_step",param.nMaxStep,4);
             nh.param("preplanner/max_bearing",param.maxBearing,float(M_PI/2.0));
+            float angleDeg;
+            nh.param("preplanner/max_angle_diff_from_sensor_deg",angleDeg,120.0f);
+            param.maxAngleDeviationFromSensor = angleDeg * M_PI / 180.0;
             nh.param("preplanner/score_field_resolution",param.resolution,float(0.3));
             nh.param("preplanner/score_field_node_stride",param.graphNodeStride,3);
             nh.param("preplanner/score_field_margin/xy",param.margin_xy,float(4.0));
@@ -256,6 +259,7 @@ namespace dual_chaser{
             }
 
             // 2. Upload state and visualization of current planning inputs (state -> visualizer)
+            state.dronePosition = planningInput.droneState.position;
             state.futureTargetPoints = futureTargetPoints;
             state.totalTargetPoints = totalTargetPoints;
             state.curTargets = planningInput.targetInit;
@@ -613,7 +617,9 @@ namespace dual_chaser{
 
                 // point sample
                 PointSet candidateNodes;
-                state.vsf_path[n].getPnt(param.graphNodeStride ,hollow,candidateNodes);
+                state.vsf_path[n].getPnt(param.graphNodeStride ,hollow,
+                                         state.targetSetPath[n].center(), state.dronePosition, param.maxAngleDeviationFromSensor
+                                         ,candidateNodes);
                 candidateNodesPath.push_back(candidateNodes);
 
                 nMaxNodes += candidateNodes.size();

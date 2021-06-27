@@ -119,6 +119,8 @@ namespace dual_chaser {
         void getPntAndValue (int nStride,PointSet& pnts,vector<float>& vals);
         void getPnt (int nStride,PointSet& pnts);
         void getPnt (int nStride,const vector<EllipsoidNoRot>& hollowing,PointSet& pnts);
+        void getPnt (int nStride,const vector<EllipsoidNoRot>& hollowing,
+                     Point vantangePoint, Point sensorPoint, float angleDiffMax,PointSet& pnts);
         void getPnt (int stride, float lengthMin[3] , float lengthMax[3],const vector<EllipsoidNoRot>& hollowing ,  PointSet& pnts);
         float eval(Point pnt) const {
             return eval(pnt2ind(pnt));

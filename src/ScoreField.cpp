@@ -128,8 +128,12 @@ void ScoreFieldBase::getPnt(int nStride, PointSet& pnts)  {
                 }
 }
 
-
-
+/**
+ * Sample points outside hollowing ellipsoid
+ * @param nStride stride of vsf original resolution
+ * @param hollowing
+ * @param pnts
+ */
 void ScoreFieldBase::getPnt(int nStride, const vector<EllipsoidNoRot>& hollowing, PointSet& pnts) {
     pnts.points.clear();
     int nTotal =(floor((Nx-1)/float(nStride))+1) *
@@ -156,6 +160,58 @@ void ScoreFieldBase::getPnt(int nStride, const vector<EllipsoidNoRot>& hollowing
                     }
                 }
 }
+
+/**
+ * sample points X s.t angle(X-vantangePoint , sensorPoint-vantangePoint) <= angleDiffMax
+ * This function was designed to discrepancy between planned view angle and the current sensoring data
+ * @param nStride
+ * @param hollowing
+ * @param vantangePoint
+ * @param sensorPoint
+ * @param angleDiffMax
+ * @param pnts
+ */
+void ScoreFieldBase::getPnt(int nStride, const vector<EllipsoidNoRot> &hollowing, Point vantangePoint,
+                            Point sensorPoint, float angleDiffMax, PointSet &pnts) {
+
+    pnts.points.clear();
+    int nTotal =(floor((Nx-1)/float(nStride))+1) *
+                (floor((Ny-1)/float(nStride))+1)*
+                (floor((Nz-1)/float(nStride))+1);
+    pnts.points.resize(nTotal);
+    int nInsert =0 ;
+    if (isFieldInit)
+        for (int nx = 0; nx < Nx ; nx+= nStride)
+            for (int ny  = 0 ; ny < Ny ; ny+=nStride)
+                for (int nz  = 0 ; nz < Nz ; nz+=nStride) {
+                    Point pnt = ind2pnt(ind3(nx, ny, nz));
+
+                    // outside hollowing ellipse
+                    bool isInclude = false;
+                    for (const auto & ellipse : hollowing){
+                        if (ellipse.evalDist(pnt) <= 0 ){
+                            isInclude = true;
+                            break;
+                        }
+                    }
+                    if (not isInclude){
+
+                        // angle constraint ?
+                        Point v1 =  (pnt-vantangePoint);
+                        Point v2 = (sensorPoint-vantangePoint);
+                        float angleDiff = acos(v1.dot(v2) / v1.norm() / v2.norm());
+                        if (angleDiff < angleDiffMax) {
+                            pnts.points[nInsert] = pnt;
+                            nInsert++;
+                        }
+                    }
+                }
+}
+
+
+
+
+
 
 /**
  * point sampler (center - lengthMin) ~ (center + lengthMax) / not origin

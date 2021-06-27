@@ -60,6 +60,7 @@ namespace dual_chaser{
         nhPrivate.param("history_collect_interval",param.historyCollectInterval,0.1f);
         state.horizon = param.horizon;
         nhPrivate.param<string>("frame_id",param.worldFrameId,"/map");
+        nhPrivate.param<string>("drone_frame_id",param.zedFrameId,"/base_link");
         nhPrivate.param("smooth_planner/preplan_track_rad",param.knotEps,float(0.3));
         nhPrivate.param("smooth_planner/length_step",param.lengthStepCorridorPoints,float(0.3));
         nhPrivate.param("smooth_planner/poly_order",param.polyOrder,5);
@@ -144,6 +145,7 @@ namespace dual_chaser{
         ros::Time curTime = ros::Time::now();
         planningInput.predictionOutput = state.predictionOutput;
         planningInput.tTrigger = curTime;
+        planningInput.droneState = state.getChaserState();
         vector<Pose> targetInitPose = targetManagerPtr->lookupLastTargets();
         for (int n = 0; n < param.nTarget ; n++)
             planningInput.targetInit.points.push_back(targetInitPose[n].getTranslation());

@@ -32,7 +32,6 @@ namespace dual_chaser{
             float margin_z_up = 2.0;
             float margin_z_down = 2.0;
             float resolution = 0.2; // larger than edt resolution
-            // todo modify for online (they are no more global things. Currently not using)
             float minZ;
             float maxZ;
 
@@ -47,6 +46,7 @@ namespace dual_chaser{
             float occlusionEps = 0.3;
             float collisionRayStride = 0.1;
             float maxBearing = M_PI/3.0*2.0;
+            float maxAngleDeviationFromSensor = M_PI / 3.0 * 2.0;
             float maxConnectVelocity = 3.0; // maximum connection distance
             float desShotDist = 3;
 
@@ -73,6 +73,7 @@ namespace dual_chaser{
             vector<PredictionOutput> predictionOutput; // (X1,X2,X3,...,XN)_{m=1,...,M}
             PointSet targetInit; // X0_{m=1,..M}
             ChaserState initStateForPlanning; // either real drone state or last plan pose
+            ChaserState droneState; // real drone state. Used to constrain view angle of candidate nodes
 
         };
 
@@ -181,6 +182,7 @@ namespace dual_chaser{
                 vector<TrajStamped> futureTargetPoints; // t1~
                 vector<TrajStamped> totalTargetPoints; // t0~
                 vector<PointSet> targetSetPath; // path of target set (= targetPathSet)
+                Point dronePosition; // real sensor position
                 Point chaserInit; // this might not be same with true drone state at the triggering
                 Point chaserInitVel;
                 int nLastQueryStep = 1; // [1,nMaxStep;]

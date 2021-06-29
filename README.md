@@ -40,13 +40,11 @@ roslaunch dual_chaser zed_online.launch
 ## Required transforms and topic 
 
 ### 1. tf 
-* World frame (`frame_id`) to drone (or sensor frame) `drone_frame_id`. Defaults are `map` and `base_link` respectively. 
-* World frame to target object frames {target_0_filtered,target_1_filtered} (both required). 
+* World frame `frame_id` to drone (or sensor frame) `drone_frame_id`. Defaults are `map` and `base_link` respectively. 
+* World frame to target object frames `{target_0_filtered,target_1_filtered}` (both required). 
 
 ### 2. topics 
-
-
-
+* Pointcloud `~cloud_in` for [EdtOctomapServer](https://github.com/icsl-Jeon/octomap_mapping/blob/kinetic-devel/octomap_server/include/octomap_server/EdtOctomapServer.h)
 
 ## Code structure
 

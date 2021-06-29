@@ -658,14 +658,6 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        bag_object_1:
-          Value: true
-        bag_object_2:
-          Value: true
-        bag_target_0_filtered:
-          Value: true
-        bag_target_1_filtered:
-          Value: true
         base_link:
           Value: true
         desired_pose:
@@ -678,6 +670,8 @@ Visualization Manager:
           Value: true
         map:
           Value: false
+        object_0:
+          Value: true
         object_1:
           Value: true
         object_2:
@@ -692,6 +686,8 @@ Visualization Manager:
           Value: false
         zed2_camera_center:
           Value: false
+        zed2_imu_link:
+          Value: true
         zed2_left_camera_frame:
           Value: false
         zed2_left_camera_optical_frame:
@@ -714,14 +710,6 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          bag_object_1:
-            {}
-          bag_object_2:
-            {}
-          bag_target_0_filtered:
-            {}
-          bag_target_1_filtered:
-            {}
           desired_pose:
             {}
           drone_link:
@@ -729,6 +717,8 @@ Visualization Manager:
           lib_0:
             {}
           lib_1:
+            {}
+          object_0:
             {}
           object_1:
             {}
@@ -740,6 +730,8 @@ Visualization Manager:
                 zed2_baro_link:
                   {}
                 zed2_left_camera_frame:
+                  zed2_imu_link:
+                    {}
                   zed2_left_camera_optical_frame:
                     {}
                   zed2_temp_left_link:

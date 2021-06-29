@@ -10,6 +10,7 @@
         <arg name="bag_file" value="/media/jbs/ssd/bag_zed/outdoor/dual_target/compressed/rooftop.bag"/>
 <!--        <arg name="bag_file" value="/media/jbs/ssd/bag_zed/outdoor/single_target/compressed/314_upper.bag"/>-->
 
+
         <arg name="run_edt" value="false"/>
         <arg name="rviz" value="false"/>
         <arg name="point_topic" value="/cloud_in"/>

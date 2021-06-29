@@ -56,6 +56,7 @@ namespace dual_chaser{
         param.mode = isPreplanMode  ? PLANNING_LEVEL::PRE_PLANNING :  PLANNING_LEVEL::SMOOTH_PLANNING;
 
         nhPrivate.param("horizon",param.horizon,1.0f);
+        nhPrivate.param("n_target",param.nTarget,2);
         nhPrivate.param("desired_position_smoothing",param.planPoseSmoothing,0.0f);
         nhPrivate.param("history_collect_interval",param.historyCollectInterval,0.1f);
         state.horizon = param.horizon;

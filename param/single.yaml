@@ -1,6 +1,6 @@
 frame_id: map
 drone_frame_id: base_link
-n_target: 2
+n_target: 1
 horizon: 1.5 # this horizon should be smaller than target_manager/horizon
 early_end: 1.0 # horizon - early_end = period
 desired_position_smoothing: 0.9 #  [0,1]

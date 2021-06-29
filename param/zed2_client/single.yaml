@@ -3,7 +3,7 @@ mask_object:  true # activate target masking for pcl
 additional_pcl: false # receive other pcl
 additional_depth: false # receive other pcl
 target_tracking:
-  n_target: 2 # 1 or 2 available
+  n_target: 1 # 1 or 2 available
   height_offset_from_box_center: 0.5 # collect observation with z-offset
   callback_interval: 0.02 # [s] interval to run callback where target tracking updates
   smoothing_weight: 0.7 # [0,1], higher = more smoothing of position and color queue

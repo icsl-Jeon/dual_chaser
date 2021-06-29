@@ -76,6 +76,7 @@ namespace dual_chaser{
              */
 
             nh.param("horizon",param.horizon,1.0f);
+            nh.param("n_target",param.nTarget,2);
             nh.param("preplanner/n_max_step",param.nMaxStep,4);
             nh.param("preplanner/max_bearing",param.maxBearing,float(M_PI/2.0));
             float angleDeg;
@@ -535,7 +536,10 @@ namespace dual_chaser{
                                 result.nRejectEdgesTraverseObstacleCollision+= (int) isEdgeCollision;
 
                                 if (not isEdgeCollision) {
-                                    bool isBearingViolated = bearing > tryParam.maxBearing;
+                                    bool isBearingViolated =false;
+                                    if (param.nTarget > 1){
+                                       isBearingViolated =  bearing > tryParam.maxBearing;
+                                    }
                                     result.nRejectEndPointBearingViolation += (int) isBearingViolated;
                                     if (not isBearingViolated) {
 

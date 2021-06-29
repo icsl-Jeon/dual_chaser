@@ -4,6 +4,7 @@
     <arg name ="param_file" default="default.yaml"/>
     <param name="use_sim_time" value="$(arg is_bag)"/>
     <arg name="point_topic" default="/zed_client_node/points_masked"/>
+    <arg name="dual" default="true"/>
 
     <node name="dual_chaser" type="preplanner_node" pkg="dual_chaser" output="screen">
         <!-- Target motion library -->
@@ -13,7 +14,8 @@
 
         <!-- Target prediction -->
         <rosparam file="$(find chasing_utils)/param/target_manager.yaml" command="load" ns="target_manager" />
-        <rosparam param="target_frame_set">[target_0_filtered,target_1_filtered]</rosparam>
+        <rosparam if = "$(arg dual)" param="target_frame_set">[target_0_filtered,target_1_filtered]</rosparam>
+        <rosparam unless = "$(arg dual)" param="target_frame_set">[target_0_filtered]</rosparam>
 
         <!-- EDT server -->
         <rosparam file="$(find dual_chaser)/param/octomap_zed.yaml" command="load"/>

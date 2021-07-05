@@ -1,7 +1,8 @@
 frame_id: map
+activate_chaser: true # true = chasing start right after the rosrun / false = call service
 drone_frame_id: base_link
 n_target: 2
-horizon: 1.5 # this horizon should be smaller than target_manager/horizon
+horizon: 2.0 # this horizon should be smaller than target_manager/horizon
 early_end: 1.0 # horizon - early_end = period
 desired_position_smoothing: 0.9 #  [0,1]
 history_collect_interval: 0.2 # [s]

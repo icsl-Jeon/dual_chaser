@@ -7,6 +7,8 @@
 #include <dual_chaser/Preplanner.h>
 #include <traj_gen/TrajGen.hpp>
 #include <dual_chaser_msgs/Status.h>
+#include <dual_chaser_msgs/ActivateChaser.h>
+
 
 using namespace chasing_utils;
 
@@ -85,6 +87,7 @@ namespace dual_chaser{
 
         };
         struct State{
+            bool isChaserActive = false; // true = ruin planner
             float horizon;
             ros::Time tLastChaserStateUpdate; // time of the stamp of last lookup-ed tf of chaser
             ros::Time tLastCallbackTime; // ros time when the async callback called
@@ -127,6 +130,8 @@ namespace dual_chaser{
             ros::Publisher bearingHistory[2]; // target A and B
             ros::Publisher targetHistory[2];
             ros::Publisher chaserStatus;
+            ros::Publisher emitPlanningPose;
+            ros::ServiceServer srvActivate;
         };
 
         struct VisualizationSet{
@@ -160,6 +165,8 @@ namespace dual_chaser{
         preplanner::Preplanner* preplannerPtr;
 
         void initROS();
+        bool activateCallback(dual_chaser_msgs::ActivateChaserRequest& req,
+                              dual_chaser_msgs::ActivateChaserResponse& resp);
         void asyncTimerCallback(const ros::TimerEvent& event);
         void updateTime(visualization_msgs::MarkerArray markerArray,ros::Time time);
 

@@ -48,11 +48,19 @@ namespace dual_chaser{
     }
 
 
+    bool Wrapper::activateCallback(dual_chaser_msgs::ActivateChaserRequest& req,
+                          dual_chaser_msgs::ActivateChaserResponse& resp){
+        state.isChaserActive = req.activate;
+        return true;
+    };
+
+
     void Wrapper::initROS() {
 
         // Parameter parsing
         bool isPreplanMode;
         nhPrivate.param("only_preplan",isPreplanMode,false);
+        nhPrivate.param("activate_chaser",state.isChaserActive,false); // for simulation, setting true is okay
         param.mode = isPreplanMode  ? PLANNING_LEVEL::PRE_PLANNING :  PLANNING_LEVEL::SMOOTH_PLANNING;
 
         nhPrivate.param("horizon",param.horizon,1.0f);
@@ -104,6 +112,7 @@ namespace dual_chaser{
         pubSet.corridor= nhPrivate.advertise<visualization_msgs::MarkerArray>(topicPrefix + "/corridor",1);
         pubSet.curPlan = nhPrivate.advertise<nav_msgs::Path>(topicPrefix+"/cur_plan_traj",1);
         pubSet.curPlanHistory= nhPrivate.advertise<nav_msgs::Path>(topicPrefix+"/history_plan",1);
+        pubSet.srvActivate = nhPrivate.advertiseService(topicPrefix+"/activate_chaser",&Wrapper::activateCallback,this);
         for(int m =0 ; m < param.nTarget ; m++){
             string topicPrefixTarget = topicPrefix + "/target_" + to_string(m) ;
             pubSet.bearingHistory[m] = nhPrivate.advertise<visualization_msgs::MarkerArray>(topicPrefixTarget + "/bearing",1);
@@ -223,12 +232,15 @@ namespace dual_chaser{
 
 
     bool Wrapper::canPlanning() {
-        if (not state.isChaserPose){
-            ROS_WARN("No chase frame %s was received from tf ", param.chaserFrameId.c_str());
+        if (not state.isChaserActive){
+            ROS_WARN_THROTTLE(2,"Still chaser is not active.. call service ~activate_chaser with true");
             return false;
         }
 
-
+        if (not state.isChaserPose){
+            ROS_WARN_THROTTLE(2,"No chase frame %s was received from tf ", param.chaserFrameId.c_str());
+            return false;
+        }
 
         return true;
     }
@@ -252,10 +264,10 @@ namespace dual_chaser{
     }
 
     bool Wrapper::trigger() {
-        bool triggerCondtion = canPlanning() and (needPlanning() or targetManagerPtr->needPrediction());
-        if (triggerCondtion)
+        bool triggerCondition = canPlanning() and (needPlanning() or targetManagerPtr->needPrediction());
+        if (triggerCondition)
             ROS_INFO("Wrapper: trigger planning");
-        return triggerCondtion;
+        return triggerCondition;
     }
 
     bool Wrapper::smoothPlan(const smooth_planner::PlanningInput &planningInput) {
@@ -507,12 +519,14 @@ namespace dual_chaser{
      */
     void Wrapper::run() {
         while(ros::ok()){
+
             if (trigger())
                 if (not plan()) {
                     // do some exception handling
                     ROS_ERROR("Wrapper: planning failed. will trigger new..");
                 }else
                     ROS_INFO("Wrapper: planning success");
+
             ros::Rate(30).sleep();
             ros::spinOnce(); // for global callback queue (e.g. octomap)
         }

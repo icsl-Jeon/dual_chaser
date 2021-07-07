@@ -119,6 +119,7 @@ namespace dual_chaser{
             pubSet.targetHistory[m] = nhPrivate.advertise<nav_msgs::Path>(topicPrefixTarget + "/history",1);
         }
         pubSet.chaserStatus = nhPrivate.advertise<dual_chaser_msgs::Status>(topicPrefix + "/status",1);
+        pubSet.emitPlanningPose = nhPrivate.advertise<geometry_msgs::PoseStamped>(topicPrefix + "/desired_pose",1);
 
         callbackQueue.clear();
         nhTimer.setCallbackQueue(&callbackQueue);
@@ -673,6 +674,8 @@ namespace dual_chaser{
                 tfBroadcasterPtr->sendTransform(transformEmit);
                 Pose newPose(transform);
 
+
+
                 float dt = (transform.stamp_ - state.tLastChaserStateUpdate).toSec(); // tf incoming rate can be slolwer than this callback
                 if (dt > 0 ) {
                     Point newVelocity = (newPose.getTranslation() - state.curChaserPose.getTranslation()) * (1.0 / dt);
@@ -682,6 +685,14 @@ namespace dual_chaser{
                 state.curChaserPose = newPose;
                 state.tLastCallbackTime = curTime;
                 state.tLastChaserStateUpdate = transform.stamp_;
+                if (not state.isChaserPose) {
+                    state.nodeStartPose = state.curChaserPose;
+                    ROS_INFO("first position after node starts: [%f, %f, %f]",
+                             state.nodeStartPose.getTranslation().x,
+                             state.nodeStartPose.getTranslation().y,
+                             state.nodeStartPose.getTranslation().z);
+                }
+
                 state.isChaserPose  = true;
 
             } catch (tf::TransformException& ex) {
@@ -713,6 +724,11 @@ namespace dual_chaser{
                 // broadcast desired tf
                 auto desiredTf = curPlanPose.toTf(param.worldFrameId, param.chaserPlanningFrameId, curTime);
                 tfBroadcasterPtr->sendTransform(desiredTf);
+                geometry_msgs::PoseStamped poseStamped;
+                poseStamped.pose = curPlanPose.toGeoPose();
+                poseStamped.header.frame_id = param.worldFrameId;
+                poseStamped.header.stamp = curTime;
+                pubSet.emitPlanningPose.publish(poseStamped);
 
                 /**
                  * collect current planning history
@@ -762,6 +778,17 @@ namespace dual_chaser{
                 if (edtServerPtr->getLocker().try_lock()) {
                     pubSet.chaserStatus.publish(getCurStatus());
                     edtServerPtr->getLocker().unlock();
+                }
+            }else{
+                // no plan. set the desired as the initial state when this node started
+                if (state.isChaserPose){
+                    geometry_msgs::PoseStamped poseStamped;
+                    poseStamped.pose = state.nodeStartPose.toGeoPose();
+                    poseStamped.header.frame_id = param.worldFrameId;
+                    poseStamped.header.stamp = curTime;
+                    pubSet.emitPlanningPose.publish(poseStamped);
+                    auto desiredTf = state.nodeStartPose.toTf(param.worldFrameId, param.chaserPlanningFrameId, curTime);
+                    tfBroadcasterPtr->sendTransform(desiredTf);
                 }
             }
             mutexVis.unlock();

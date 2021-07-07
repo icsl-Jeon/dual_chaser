@@ -87,6 +87,7 @@ namespace dual_chaser{
 
         };
         struct State{
+
             bool isChaserActive = false; // true = ruin planner
             float horizon;
             ros::Time tLastChaserStateUpdate; // time of the stamp of last lookup-ed tf of chaser
@@ -107,7 +108,7 @@ namespace dual_chaser{
             Point curChaserVelocity; // latest update at async callback (world frame)
             Point curChaserAcceleration;
             ChaserState lastEmitPlanPose; // update in emitCurrentPlanningPose
-
+            Pose nodeStartPose; // the state first received after node started
             ChaserState getChaserState() const; // returns current drone state
             ChaserState getPlanChaserState() const ; // returns current planning evaluation
             ChaserState getPlanChaserState(PointSet targets,

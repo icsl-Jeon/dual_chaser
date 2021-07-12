@@ -4,13 +4,12 @@
     <arg name="rviz" default="true"/>
     <arg name="rosbag_status" default="false"/>
     <arg name="dual" default="true"/>
+    <arg name= "is_bag" default = "false"/>
 
     <include file="$(find zed2_client)/launch/client.launch">
-        <arg name="is_bag" value="true"/>
+        <arg name="is_bag" value="$(arg is_bag)"/>
         <arg name="bag_file" value="/media/jbs/ssd/bag_zed/outdoor/dual_target/compressed/forest1.bag"/>
 <!--        <arg name="bag_file" value="/media/jbs/ssd/bag_zed/outdoor/single_target/compressed/314_upper.bag"/>-->
-
-
         <arg name="run_edt" value="false"/>
         <arg name="rviz" value="false"/>
         <arg name="point_topic" value="/cloud_in"/>
@@ -19,7 +18,7 @@
     </include>
 
     <include file="$(find dual_chaser)/launch/run.launch">
-        <arg name="is_bag" value="true"/>
+        <arg name="is_bag" value="$(arg is_bag)"/>
         <arg name="point_topic" value="/cloud_in"/>
         <arg name="param_file" value="default.yaml" if = "$(arg dual)"/>
         <arg name="param_file" value="single.yaml" unless = "$(arg dual)"/>

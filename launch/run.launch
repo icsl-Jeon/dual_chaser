@@ -20,6 +20,7 @@
         <!-- EDT server -->
         <rosparam file="$(find dual_chaser)/param/octomap_zed.yaml" command="load"/>
         <remap from="cloud_in" to="$(arg point_topic)" />
+        <remap from="/dual_chaser/wrapper/desired_pose" to="/mavros/setpoint_position/local" />
 
         <!-- Dual chaser -->
         <rosparam subst_value="true" file="$(find dual_chaser)/param/$(arg param_file)" command="load"/>

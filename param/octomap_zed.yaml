@@ -5,7 +5,7 @@ sensor_model/max: 0.9
 sensor_model/min: 0.12
 sensor_model/hit: 0.7
 sensor_model/miss: 0.1 # should be lower to clear bleeding from tree to ground
-max_distance: 1.0
+max_distance: 2.0
 slice_height: 2.0 # used only global_edf visualization
 unknown_is_occupied: false
 verbose: false
@@ -36,7 +36,7 @@ window_bound: {
                      z: -3
               }
 }
-safe_margin: 0.3
+safe_margin: 0.6
 height_map: false
 color: {
          r: 0.9,

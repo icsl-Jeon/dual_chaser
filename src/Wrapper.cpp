@@ -193,7 +193,7 @@ namespace dual_chaser{
                 float t = preplanning.ts[n]+dt*float(k);
                 Point p = preplanning.eval(t); // preplanning points
                 octomap::point3d pnt(p.x,p.y,p.z);
-                float safeExpansionRad_CO = edtServerPtr->getDistance(pnt);
+                float safeExpansionRad_CO = edtServerPtr->getDistance(pnt) - param.OC_collisionEps;
                 // expansion try against target
                 float safeExpansionRad_CT = numeric_limits<float>::max(); // 2d
                 for (int m = 0 ; m < param.nTarget ; m++) {

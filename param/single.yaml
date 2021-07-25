@@ -20,7 +20,7 @@ preplanner:
     xy: 4.0 # extension to +/-xy
     z_top: 1.0 # extension to +/-z w.r.t target at each step
     z_bottom: 0.5 # extension to +/-z w.r.t target at each step
-  collision_clearance: 0.8 # increasing this can sort out unsafe points and can reduce graph build time
+  collision_clearance: 0.7 # increasing this can sort out unsafe points and can reduce graph build time
   occlusion_clearance: 0.3
   target_collision_simple: false # true = simple sphere check / false = ellipsoid checking
   target_collision_sphere_rad: 0.6

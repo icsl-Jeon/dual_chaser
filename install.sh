@@ -8,4 +8,11 @@ cd qpOASES
 mkdir build && cd build
 cmake .. -DCMAKE_CXX_FLAGS=-fPIC
 sudo make install
+# trajgen
+cd ~/chaser_ws/src
+git clone https://github.com/icsl-Jeon/traj_gen.git
+cd ./traj_gen/cpp
+mkdir build && cd build
+cmake ..
+make && sudo make install
 #

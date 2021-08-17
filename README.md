@@ -59,6 +59,7 @@ catkin build chasing_utils
 sudo apt-get install ros-${ROS_DISTRO}-compressed-depth-image-transport
 cd catkin_ws/src
 git clone https://github.com/stereolabs/zed-ros-wrapper.git
+git clone https://github.com/stereolabs/zed-ros-interfaces
 git clone https://github.com/icsl-Jeon/zed-ros-examples.git
 git clone https://github.com/icsl-Jeon/zed2_client.git
 catkin build zed_interfaces rviz_plugin_zed_od zed2_client

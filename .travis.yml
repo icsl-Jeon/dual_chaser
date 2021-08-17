@@ -1,11 +1,6 @@
 sudo: required
 dist: focal
 language: generic
-cache:
-  packages: true
-  apt: true
-  directories:
-    - /opt/ros
 env:
   - OPENCV_VERSION=3 ROS_DISTRO=noetic
 # Install system dependencies, namely ROS.
@@ -35,3 +30,9 @@ script:
   - cd ~/chaser_ws/src
   - git clone https://github.com/icsl-Jeon/dual_chaser -b travis
   - sudo sh dual_chaser/install.sh
+
+cache:
+  packages: true
+  apt: true
+  directories:
+    - /opt/ros

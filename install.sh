@@ -18,14 +18,13 @@ make && sudo make install
 
 # octomap stuff
 cd ~/chaser_ws/src
-sudo apt-get install ros-noetic-octomap
+sudo apt-get install ros-noetic-octomap-ros
 git clone https://github.com/icsl-Jeon/octomap
 cd octomap/dynamicEDT3D
 mkdir build && cmake ..
 sudo make install
 
 # catkin pkg all build
-sudo apt-get install ros-${ROS_DISTRO}-compressed-depth-image-transport
 sudo apt-get install ros-${ROS_DISTRO}-compressed-depth-image-transport
 cd ~/chaser_ws/src
 git clone https://github.com/icsl-Jeon/dual_chaser_msgs
@@ -36,5 +35,5 @@ git clone /github.com/icsl-Jeon/chasing_utils.git
 git clone https://github.com/stereolabs/zed-ros-wrapper.git
 git clone https://github.com/icsl-Jeon/zed-ros-examples.git
 git clone https://github.com/icsl-Jeon/zed2_client.git
-
+cd ~/chaser_ws
 catkin build zed_interfaces rviz_plugin_zed_od zed2_client dual_chaser_msgs octomap_server chasing_utils dual_chaser

@@ -18,6 +18,7 @@ make && sudo make install
 
 # octomap stuff
 cd ~/chaser_ws/src
+sudo apt-get install ros-noetic-tf2-sensor-msgs
 sudo apt-get install ros-noetic-octomap-ros
 git clone https://github.com/icsl-Jeon/octomap
 cd octomap/dynamicEDT3D

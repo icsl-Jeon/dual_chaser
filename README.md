@@ -47,7 +47,7 @@ git clone /github.com/icsl-Jeon/chasing_utils.git
 catkin build chasing_utils
 ```
 
-#### [zed2_client (optinal. But required if want to run bag and launch) ](https://github.com/icsl-Jeon/zed2_client.git)
+#### [zed2_client ](https://github.com/icsl-Jeon/zed2_client.git)  (optinal. But required if want to run bag and launch)
 ```
 sudo apt-get install ros-${ROS_DISTRO}-compressed-depth-image-transport
 cd catkin_ws/src

@@ -15,7 +15,7 @@ before_install:
   # Install ROS
   - sudo sh -c "echo \"deb http://packages.ros.org/ros-shadow-fixed/ubuntu $ROS_CI_DESKTOP main\" > /etc/apt/sources.list.d/ros-latest.list"
   - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
-  - sudo apt-get update -qq &>/dev/null
+  - sudo apt-get update
   # Install ROS
   - sudo apt-get install -qq -y python-catkin-pkg python-catkin-tools python-rosdep python-wstool ros-$ROS_DISTRO-catkin >/dev/null
   - source /opt/ros/$ROS_DISTRO/setup.bash

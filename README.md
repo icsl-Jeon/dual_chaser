@@ -98,5 +98,17 @@ roslaunch dual_chaser zed_online.launch is_bag:=true
 
 ## Analyzing
 The [status message](https://github.com/icsl-Jeon/dual_chaser_msgs) regarding the current planning pose is published 
-in the topic `~/wrapper/status`. This can be visualized in [rqt_gui](rviz/monitor.perspective) or in [matlab](rosbag/status_log.m)
+in the topic `~/wrapper/status`. This can be visualized in [rqt_gui](rviz/monitor.perspective) or in [matlab](rosbag/status_log.m). The rqt perspective file configures the following:
+![rqt_gui](https://user-images.githubusercontent.com/30062474/129699674-df684684-13d3-4adc-8f0f-960c0bcef581.png)
+This can be launched by setting     `<arg name="rqt_gui" default="true"/>` as the below [snippet](launch/zed_online.launch)
+
+```
+    <arg name="plot_juggler" default="false"/>
+    <arg name="rqt_gui" default="true"/>
+    <arg name="rviz" default="true"/>
+    <arg name="rosbag_status" default="false"/>
+    <arg name="dual" default="true"/>
+    <arg name= "is_bag" default = "false"/>
+```
+
 

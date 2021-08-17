@@ -5,6 +5,7 @@
 
 
 ## Installation 
+Tested environment: noetic w/ Ubuntu20.04
 
 #### [traj_gen](https://github.com/icsl-Jeon/traj_gen)
 
@@ -46,11 +47,14 @@ git clone /github.com/icsl-Jeon/chasing_utils.git
 catkin build chasing_utils
 ```
 
-#### [zed2_client (optinal) ](https://github.com/icsl-Jeon/zed2_client.git)
+#### [zed2_client (optinal. But required if want to run bag and launch) ](https://github.com/icsl-Jeon/zed2_client.git)
 ```
+sudo apt-get install ros-${ROS_DISTRO}-compressed-depth-image-transport
 cd catkin_ws/src
-git clone /github.com/icsl-Jeon/zed2_client.git
-catkin build zed2_client
+git clone https://github.com/stereolabs/zed-ros-wrapper.git
+git clone https://github.com/icsl-Jeon/zed-ros-examples.git
+git clone https://github.com/icsl-Jeon/zed2_client.git
+catkin build zed_interfaces rviz_plugin_zed_od zed2_client
 ```
 
 ## Launch 

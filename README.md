@@ -1,7 +1,7 @@
 # dual_chaser
 *chasing algorithm for motion planning in obstacle environment*
+[![thumbnail](https://user-images.githubusercontent.com/30062474/129690622-0c8a87ca-fe70-4516-b26d-78de3ab56c2d.png)](https://youtu.be/RE6pJ6QvqsA)
 
-[![thumbnail](https://user-images.githubusercontent.com/30062474/129688363-6a3228bd-68a1-4ede-8958-b3fd19f8baf7.png)](https://youtu.be/RE6pJ6QvqsA)
 
 
 ## Installation 

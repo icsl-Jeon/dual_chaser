@@ -1,5 +1,5 @@
 %% Rosbag read 
-data_dir = {'/media/jbs/ssd/experiment_dual_outdoor/bag/stair/success_default2.bag'};
+data_dir = {'/media/jbs/ssd/experiment_dual_outdoor/bag/forest/success1.bag'};
 topic = '/dual_chaser/wrapper/status';
 
 for n = 1:length(data_dir)
@@ -16,7 +16,7 @@ panelXY = [1 2 5  6 9 10];
 panel1 = [1 2 3 ];
 panel2 = [4 5 6];
 panel3 = [7 8 9];
-tMax = 35; 
+tMax = 150; 
 targetColor = [ 242, 31, 63 ;31, 190, 242];
 
 for m = 1:nBag
@@ -111,7 +111,7 @@ for m = 1:nBag
     
     subplot(3,3,panel1);
     hold on
-    smoothing = 20;
+    smoothing = 10;
     lineWidth = 1; 
     hspeed = plot (t,smooth(historyPlanningSpeed,smoothing),'k:','LineWidth',1.5*lineWidth);
     haccel = plot (t,smooth(historyPlanningAcceleration,2*smoothing),'k-','LineWidth',lineWidth);
@@ -122,24 +122,34 @@ for m = 1:nBag
 
     
     h = subplot (3,3,panel3);
+    smoothing = 50; 
     hold on
-    plot (t,historyPlanningEDF,'k-')
-    occlusionMargin = 0.6; 
+    hEDF = plot (t,smooth(historyPlanningEDF,smoothing),'k-');
+    occlusionMargin = 0.3; 
+    collisionMargin = 0.6; 
     hOccObstacle = [];
     hOccInter = [];
+    xlabel('$t$ [s]','Interpreter','latex')
 
+       
     for m = 1:2
-        yline(occlusionMargin,'k--')
-        hOccObstacle = [hOccObstacle plot(t,historyBearingEDF{m},'Color',targetColor(m,:)/255,'LineWidth',lineWidth)];
-        hOccInter = [hOccInter plot(t,historyInterOcclusion{m},':','Color',targetColor(m,:)/255,'LineWidth',lineWidth)];
+        yline(occlusionMargin,'k--','LineWidth',2.0)
+        hOccObstacle = [hOccObstacle plot(t,smooth(historyBearingEDF{m},smoothing),'Color',targetColor(m,:)/255,'LineWidth',lineWidth)];
+%         hOccInter = [hOccInter plot(t,historyInterOcclusion{m},':','Color',targetColor(m,:)/255,'LineWidth',lineWidth)];
     end
+    
+    yline(collisionMargin,'k:','LineWidth',2.0)    
     set(gca,'YLim',[0.0 3.3])
     set(gca,'XLim',[0 tMax])
     set(gca,'FontSize',fontSize)
     grid on
-    legend([hOccObstacle hOccInter],{'$\psi_a (\mathbf{x}_p (t)) \; [\mathrm{m}]$','$\psi_b (\mathbf{x}_p (t)) \; [\mathrm{m}]$',...
-        '$e_a (\mathbf{x}_p (t) ; \mathbf{x}_q^{b} (t) ) \; [\mathrm{m}]$','$e_b (\mathbf{x}_p (t) ; \mathbf{x}_q^{a} (t) ) \; [\mathrm{m}]$'},...
-        'Interpreter','latex')
+%     legend([hOccObstacle hOccInter],{'$\psi_a (\mathbf{x}_p (t)) \; [\mathrm{m}]$','$\psi_b (\mathbf{x}_p (t)) \; [\mathrm{m}]$',...
+%         '$e_a (\mathbf{x}_p (t) ; \mathbf{x}_q^{b} (t) ) \; [\mathrm{m}]$','$e_b (\mathbf{x}_p (t) ; \mathbf{x}_q^{a} (t) ) \; [\mathrm{m}]$'},...
+%         'Interpreter','latex')
+%     
+    legend([hOccObstacle hEDF],{'$\psi_a (\mathbf{x}_p (t)) \; [\mathrm{m}]$','$\psi_b (\mathbf{x}_p (t)) \; [\mathrm{m}]$',...,
+        '$\phi (\mathbf{x}_p (t))\; [\mathrm{m}]$'},...
+        'Interpreter','latex')    
     
     subplot (3,3,panel2)
     hold on
@@ -155,7 +165,6 @@ for m = 1:nBag
     end    
     set(gca,'XLim',[0 tMax])
     set(gca,'FontSize',fontSize)
-    xlabel('$t$ [s]','Interpreter','latex')
     legend([hRelDist hBearing],{'$|\mathbf{x}_p(t) - \mathbf{x}_q^{a}(t)| \; [\mathrm{m}]$',...
         '$|\mathbf{x}_p(t) - \mathbf{x}_q^{b}(t)| \; [\mathrm{m}]$', '$\theta_{ab}(\mathbf{x}_p(t)) \; [\mathrm{rad}]$'},'Interpreter','latex')
     grid on

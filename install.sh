@@ -36,4 +36,5 @@ git clone https://github.com/stereolabs/zed-ros-wrapper.git
 git clone https://github.com/icsl-Jeon/zed-ros-examples.git
 git clone https://github.com/icsl-Jeon/zed2_client.git
 cd ~/chaser_ws
-catkin build zed_interfaces rviz_plugin_zed_od zed2_client dual_chaser_msgs octomap_server chasing_utils dual_chaser
+ls src
+catkin build

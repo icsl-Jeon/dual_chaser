@@ -29,7 +29,7 @@ sudo apt-get install ros-${ROS_DISTRO}-compressed-depth-image-transport
 cd ~/chaser_ws/src
 git clone https://github.com/icsl-Jeon/dual_chaser_msgs
 git clone https://github.com/icsl-Jeon/octomap_mapping
-git clone /github.com/icsl-Jeon/chasing_utils.git
+git clone https://github.com/icsl-Jeon/chasing_utils.git
 
 # zed2_client
 git clone https://github.com/stereolabs/zed-ros-wrapper.git

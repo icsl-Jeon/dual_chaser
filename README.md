@@ -1,6 +1,9 @@
 # dual_chaser
 *chasing algorithm for motion planning in obstacle environment*
 
+[![thumbnail](https://user-images.githubusercontent.com/30062474/129688363-6a3228bd-68a1-4ede-8958-b3fd19f8baf7.png)](https://youtu.be/RE6pJ6QvqsA)
+
+
 ## Installation 
 
 ### [traj_gen](https://github.com/icsl-Jeon/traj_gen)

@@ -1,7 +1,5 @@
 # dual_chaser
-___
-<img src = "https://img.shields.io/github/license/Naereen/StrapDown.js.svg"/>
-<img src = "https://www.travis-ci.com/icsl-Jeon/dual_chaser.svg?branch=travis"/>
+<img src = "https://img.shields.io/github/license/Naereen/StrapDown.js.svg"/> <img src = "https://www.travis-ci.com/icsl-Jeon/dual_chaser.svg?branch=travis"/>
 
 *Motion planner to chase up **to two** targets in obstacle environment*
 [![thumbnail](https://user-images.githubusercontent.com/30062474/129690622-0c8a87ca-fe70-4516-b26d-78de3ab56c2d.png)](https://youtu.be/RE6pJ6QvqsA)

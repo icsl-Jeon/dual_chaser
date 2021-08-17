@@ -6,7 +6,7 @@
 
 ## Installation 
 
-### [traj_gen](https://github.com/icsl-Jeon/traj_gen)
+#### [traj_gen](https://github.com/icsl-Jeon/traj_gen)
 
 ```
 git clone https://github.com/icsl-Jeon/traj_gen.git
@@ -16,7 +16,7 @@ cmake ..
 make && sudo make install
 ```
 
-### [dual_chaser_msgs](https://github.com/icsl-Jeon/dual_chaser_msgs)
+#### [dual_chaser_msgs](https://github.com/icsl-Jeon/dual_chaser_msgs)
 ```
 cd ~/catkin_ws/src
 git clone https://github.com/icsl-Jeon/dual_chaser_msgs
@@ -24,20 +24,57 @@ cd ../
 catkin build
 ```
 
-### [chasing_utils](https://github.com/icsl-Jeon/chasing_utils.git)
-Follow the installation instruction of the repo:)
+#### [dynamicEDT3D (my fork ver.)](https://github.com/icsl-Jeon/octomap)
+```
+sudo apt-get install ros-noetic-octomap
+git clone https://github.com/icsl-Jeon/octomap
+cd dynamicEDT3D
+mkdir build && cmake .. 
+sudo make install
+```
+#### [octomap_server (my fork ver.)](https://github.com/icsl-Jeon/octomap_mapping)
+```
+cd catkin_ws/src
+git clone https://github.com/icsl-Jeon/octomap_mapping
+catkin build octomap_server
+```
 
-### [zed2_client (optinal) ](https://github.com/icsl-Jeon/zed2_client.git)
-Follow the installation instruction of the repo:)
+#### [chasing_utils](https://github.com/icsl-Jeon/chasing_utils.git)
+```
+cd catkin_ws/src
+git clone /github.com/icsl-Jeon/chasing_utils.git
+catkin build chasing_utils
+```
+
+#### [zed2_client (optinal) ](https://github.com/icsl-Jeon/zed2_client.git)
+```
+cd catkin_ws/src
+git clone /github.com/icsl-Jeon/zed2_client.git
+catkin build zed2_client
+```
 
 ## Launch 
 
-To launch the algorithm, first download [bag files](https://drive.google.com/drive/folders/1AtZIgeRLxQMqIC9SMKBOhj9OXK96uEfw?usp=sharing). 
+To test the algorithm, first download one of the [bag files](https://drive.google.com/drive/folders/1AtZIgeRLxQMqIC9SMKBOhj9OXK96uEfw?usp=sharing). 
+For the starter, I recommend `forest1.bag`. 
 The bags were recorded with a zed2 camera including [object detection messages](https://www.stereolabs.com/docs/ros/object-detection/).
 Here, we use [zed2_client](#zed2_client-optinal-httpsgithubcomicsl-jeonzed2_clientgit) 
 to provide `/tf` of targets and pointcloud `~cloud_in`.  
+Assuming you downloaded `forest1.bag` to `/your/path/to/bag`, modify the `bag_file` argument in [zed_online.launch](launch/zed_online.launch). 
 ```
-roslaunch dual_chaser zed_online.launch 
+  <include file="$(find zed2_client)/launch/client.launch">
+        <arg name="is_bag" value="$(arg is_bag)"/>
+        <arg name="bag_file" value="/your/path/to/bag/forest1.bag"/>
+        <arg name="run_edt" value="false"/>
+        <arg name="rviz" value="false"/>
+        <arg name="point_topic" value="/cloud_in"/>
+        <arg if = "$(arg dual)" name="param_file" value="$(find dual_chaser)/param/zed2_client/circling.yaml"/>
+        <arg unless="$(arg dual)" name="param_file" value="$(find dual_chaser)/param/zed2_client/single.yaml"/>
+    </include>
+```
+Then launch the following:
+```
+roslaunch dual_chaser zed_online.launch is_bag:=true
 ```
 
 ## Required transforms and topic 

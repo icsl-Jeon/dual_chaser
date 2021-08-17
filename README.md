@@ -7,8 +7,16 @@
 
 
 ## Installation 
-Tested environment: noetic w/ Ubuntu20.04
+* Tested environment: ROS noetic w/ Ubuntu20.04
 
+### Option1. script install 
+```
+mkdir -p ~/chaser_ws/src
+cd ~/chaser_ws/src
+git clone https://github.com/icsl-Jeon/dual_chaser.git
+./install.sh
+```
+### Option2. One-by-one building 
 #### [traj_gen](https://github.com/icsl-Jeon/traj_gen)
 
 ```
@@ -50,7 +58,7 @@ catkin build octomap_server
 #### [chasing_utils](https://github.com/icsl-Jeon/chasing_utils.git)
 ```
 cd catkin_ws/src
-git clone /github.com/icsl-Jeon/chasing_utils.git
+git clone https://github.com/icsl-Jeon/chasing_utils.git
 catkin build chasing_utils
 ```
 

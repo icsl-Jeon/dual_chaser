@@ -39,4 +39,6 @@ git clone https://github.com/icsl-Jeon/zed2_client.git
 git clone https://github.com/stereolabs/zed-ros-interfaces
 cd ~/chaser_ws
 ls src
-catkin build zed_interfaces rviz_plugin_zed_od zed2_client dual_chaser_msgs octomap_server chasing_utils dual_chaser
+catkin build zed_interfaces rviz_plugin_zed_od zed2_client dual_chaser_msgs octomap_server
+source ~/chaser_ws/devel/setup.bash
+catkin build chasing_utils dual_chaser

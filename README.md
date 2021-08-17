@@ -81,7 +81,7 @@ Then launch the following:
 roslaunch dual_chaser zed_online.launch is_bag:=true
 ```
 
-## Required transforms and topic 
+## Required transforms and topic for your usage
 
 ### 1. tf 
 * World frame `frame_id` to drone (or sensor frame) `drone_frame_id`. Defaults are `map` and `base_link` respectively. 

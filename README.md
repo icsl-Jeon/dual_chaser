@@ -1,5 +1,7 @@
 # dual_chaser
+___
 <img src = "https://img.shields.io/github/license/Naereen/StrapDown.js.svg"/>
+<img src = "https://www.travis-ci.com/icsl-Jeon/dual_chaser.svg?branch=travis"/>
 
 *Motion planner to chase up **to two** targets in obstacle environment*
 [![thumbnail](https://user-images.githubusercontent.com/30062474/129690622-0c8a87ca-fe70-4516-b26d-78de3ab56c2d.png)](https://youtu.be/RE6pJ6QvqsA)
@@ -12,6 +14,11 @@ Tested environment: noetic w/ Ubuntu20.04
 #### [traj_gen](https://github.com/icsl-Jeon/traj_gen)
 
 ```
+git clone https://github.com/coin-or/qpOASES.git
+cd qpOASES
+mkdir build && cd build
+cmake .. -DCMAKE_CXX_FLAGS=-fPIC
+sudo make install
 git clone https://github.com/icsl-Jeon/traj_gen.git
 cd ./traj_gen/cpp
 mkdir build && cd build
@@ -24,14 +31,14 @@ make && sudo make install
 cd ~/catkin_ws/src
 git clone https://github.com/icsl-Jeon/dual_chaser_msgs
 cd ../
-catkin build
+catkin build dual_chaser_msgs 
 ```
 
 #### [dynamicEDT3D (my fork ver.)](https://github.com/icsl-Jeon/octomap)
 ```
 sudo apt-get install ros-noetic-octomap
 git clone https://github.com/icsl-Jeon/octomap
-cd dynamicEDT3D
+cd octomap/dynamicEDT3D
 mkdir build && cmake .. 
 sudo make install
 ```

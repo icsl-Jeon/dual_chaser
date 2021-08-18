@@ -57,6 +57,7 @@ catkin build octomap_server
 
 #### [chasing_utils](https://github.com/icsl-Jeon/chasing_utils.git)
 ```
+sudo apt-get install ros-noetic-tf2-sensor-msgs
 cd catkin_ws/src
 git clone https://github.com/icsl-Jeon/chasing_utils.git
 catkin build chasing_utils
@@ -101,7 +102,7 @@ roslaunch dual_chaser zed_online.launch is_bag:=true
 
 ### 1. tf 
 * World frame `frame_id` to drone (or sensor frame) `drone_frame_id`. Defaults are `map` and `base_link` respectively. 
-* World frame to target object frames `{target_0_filtered,target_1_filtered}` (both required). 
+* World frame to target object frames `{target_0_filtered,target_1_filtered}` (both required in dual target mode. In the single target mode, only the first one is required). 
 
 ### 2. topics 
 * Pointcloud `~cloud_in` for [EdtOctomapServer](https://github.com/icsl-Jeon/octomap_mapping/blob/kinetic-devel/octomap_server/include/octomap_server/EdtOctomapServer.h)

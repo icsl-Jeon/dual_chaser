@@ -1,0 +1,44 @@
+compiler:
+  - gcc
+os:
+  - linux
+sudo: required
+dist: focal
+language: generic
+env:
+  - OPENCV_VERSION=3 ROS_DISTRO=noetic
+# Install system dependencies, namely ROS.
+before_install:
+  # Install ROS
+  - sudo apt-get update
+  - sudo apt-get install gcc --only-upgrade
+  - sudo sh -c 'echo "deb http://repositories.ros.org/ubuntu/testing $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+  - sudo apt install curl # if you haven't already installed curl
+  - curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
+  - sudo apt update
+  - sudo apt install -qq -y ros-noetic-desktop-full
+  - source /opt/ros/noetic/setup.bash
+  - sudo apt-get install -qq -y python3-catkin-pkg python3-catkin-tools python3-osrf-pycommon python3-rosdep python3-wstool ros-$ROS_DISTRO-catkin
+  # Setup for rosdep
+  - sudo rosdep init
+  - rosdep update
+  - sudo apt-get install git
+
+# Create a catkin workspace with the package under test.
+install:
+  - mkdir -p ~/chaser_ws/src
+  - cd ~/chaser_ws
+  - catkin init
+
+# Compile and test.
+script:
+  - source /opt/ros/$ROS_DISTRO/setup.bash
+  - cd ~/chaser_ws/src
+  - git clone https://github.com/icsl-Jeon/dual_chaser -b travis
+  - sudo sh dual_chaser/install.sh
+
+cache:
+  packages: true
+  apt: true
+  directories:
+    - /opt/ros

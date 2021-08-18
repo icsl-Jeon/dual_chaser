@@ -1,5 +1,7 @@
 compiler:
   - gcc
+notifications:
+  email: false
 os:
   - linux
 sudo: required

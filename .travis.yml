@@ -34,7 +34,7 @@ install:
 script:
   - source /opt/ros/$ROS_DISTRO/setup.bash
   - cd ~/chaser_ws/src
-  - git clone https://github.com/icsl-Jeon/dual_chaser -b travis
+  - git clone https://github.com/icsl-Jeon/dual_chaser
   - sudo sh dual_chaser/install.sh
 
 cache:

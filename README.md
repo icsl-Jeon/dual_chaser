@@ -4,6 +4,8 @@
 *Motion planner to chase up **to two** targets in obstacle environment*
 [![thumbnail](https://user-images.githubusercontent.com/30062474/129690622-0c8a87ca-fe70-4516-b26d-78de3ab56c2d.png)](https://youtu.be/RE6pJ6QvqsA)
 
+This code is the implementation of the [paper  accepted to IEEE Access](https://ieeexplore.ieee.org/abstract/document/9557293/) 
+
 
 
 ## Installation 
